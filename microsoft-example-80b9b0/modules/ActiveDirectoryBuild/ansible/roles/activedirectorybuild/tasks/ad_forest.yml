@@ -1,0 +1,19 @@
+---
+- name: Create Active Directory forest
+  microsoft.ad.domain:
+    dns_domain_name: "{{ domain_name }}"
+    safe_mode_password: "{{ safe_mode_password }}"
+    domain_netbios_name: "{{ netbios_name }}"
+    database_path: "{{ database_path }}"
+    sysvol_path: "{{ sysvol_path }}"
+    log_path: "{{ log_path }}"
+    install_dns: true
+    domain_mode: "{{ domain_mode }}"
+    forest_mode: "{{ forest_mode }}"
+  register: ad_forest_result
+- name: Reboot after AD forest creation
+  ansible.windows.win_reboot:
+    msg: Rebooting after AD forest creation
+    pre_reboot_delay: 15
+    post_reboot_delay: 60
+  when: ad_forest_result.changed

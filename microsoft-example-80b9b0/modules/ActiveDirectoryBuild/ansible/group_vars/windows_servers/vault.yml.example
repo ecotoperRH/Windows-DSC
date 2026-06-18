@@ -1,0 +1,23 @@
+---
+# Example vault file - create a real vault file with ansible-vault
+# ansible-vault create group_vars/windows_servers/vault.yml
+
+# Windows credentials
+ansible_user: Administrator
+ansible_password: YourSecurePassword
+
+# Active Directory credentials
+safe_mode_password: YourSafeModePassword
+
+# AD Users passwords
+ad_users:
+  - name: "admin"
+    path: "OU=Users,DC=corp,DC=example,DC=com"
+    password: "YourSecureAdminPassword"
+    groups:
+      - "IT_Admins"
+  - name: "hr_user"
+    path: "OU=Users,DC=corp,DC=example,DC=com"
+    password: "YourSecureHRPassword"
+    groups:
+      - "HR_Staff"

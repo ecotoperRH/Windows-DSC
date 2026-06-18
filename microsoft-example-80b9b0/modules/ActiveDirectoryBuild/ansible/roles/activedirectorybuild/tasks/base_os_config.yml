@@ -1,0 +1,22 @@
+---
+- name: Set UAC configuration
+  community.windows.win_security_policy:
+    section: System Access
+    key: EnableLUA
+    value: "1"
+  when: uac_setting == "AlwaysNotify"
+- name: Set timezone
+  ansible.windows.win_timezone:
+    timezone: "{{ timezone }}"
+- name: Set PowerShell execution policy
+  ansible.windows.win_powershell:
+    script: "Set-ExecutionPolicy -ExecutionPolicy {{ execution_policy }} -Scope LocalMachine -Force\n"
+- name: Create admin folder
+  ansible.windows.win_file:
+    path: "{{ admin_path }}"
+    state: directory
+- name: Remove API folder if exists
+  ansible.windows.win_file:
+    path: "{{ api_folder_path }}"
+    state: absent
+    force: true

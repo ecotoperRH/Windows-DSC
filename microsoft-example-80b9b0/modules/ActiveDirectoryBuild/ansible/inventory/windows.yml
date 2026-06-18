@@ -1,0 +1,12 @@
+all:
+  children:
+    windows_servers:
+      hosts:
+        win-dc01:
+          ansible_host: 192.168.1.100
+      vars:
+        ansible_connection: winrm
+        ansible_winrm_server_cert_validation: ignore
+        ansible_winrm_transport: ntlm
+        ansible_user: Administrator
+        ansible_password: YourSecurePassword

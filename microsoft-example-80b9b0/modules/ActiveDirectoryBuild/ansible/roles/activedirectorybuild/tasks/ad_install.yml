@@ -1,0 +1,14 @@
+---
+- name: Install Windows features for Active Directory
+  ansible.windows.win_feature:
+    name: "{{ windows_features }}"
+    state: present
+    include_management_tools: true
+    include_sub_features: true
+  register: win_feature_install
+- name: Reboot if required after feature installation
+  ansible.windows.win_reboot:
+    msg: Rebooting after installing AD features
+    pre_reboot_delay: 15
+    post_reboot_delay: 60
+  when: win_feature_install.reboot_required

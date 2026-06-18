@@ -1,0 +1,37 @@
+---
+- name: Validate credentials
+  ansible.builtin.include_tasks: validate_credentials.yml
+  tags:
+    - always
+- name: Include base OS configuration tasks
+  ansible.builtin.include_tasks: base_os_config.yml
+  tags:
+    - base_config
+- name: Include Active Directory installation tasks
+  ansible.builtin.include_tasks: ad_install.yml
+  tags:
+    - ad_install
+- name: Include Active Directory forest creation tasks
+  ansible.builtin.include_tasks: ad_forest.yml
+  tags:
+    - ad_forest
+- name: Include Active Directory configuration tasks
+  ansible.builtin.include_tasks: ad_config.yml
+  tags:
+    - ad_config
+- name: Include Active Directory policies tasks
+  ansible.builtin.include_tasks: ad_policies.yml
+  tags:
+    - ad_policies
+- name: Include Active Directory structure tasks
+  ansible.builtin.include_tasks: ad_structure.yml
+  tags:
+    - ad_structure
+- name: Include Active Directory DNS tasks
+  ansible.builtin.include_tasks: ad_dns.yml
+  tags:
+    - ad_dns
+- name: Include Active Directory service accounts tasks
+  ansible.builtin.include_tasks: ad_service_accounts.yml
+  tags:
+    - ad_service_accounts

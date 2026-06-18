@@ -1,0 +1,80 @@
+- name: Converge
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Set platform fact
+    ansible.builtin.set_fact:
+      is_windows: '{{ ansible_os_family is defined and ansible_os_family == ''Windows'' }}'
+  - name: Run Linux container simulation
+    when: not is_windows
+    block:
+    - name: Create base directories
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        mode: '0755'
+      loop:
+      - /tmp/molecule_test/Windows/NTDS
+      - /tmp/molecule_test/Windows/SYSVOL
+      - /tmp/molecule_test/Admin
+      - /tmp/molecule_test/Windows/System32/dns
+    - name: Create mock AD installation files
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: touch
+        mode: '0644'
+      loop:
+      - /tmp/molecule_test/Windows/NTDS/ntds.dit
+      - /tmp/molecule_test/Windows/NTDS/edb.log
+      - /tmp/molecule_test/Windows/SYSVOL/sysvol
+      - /tmp/molecule_test/Windows/SYSVOL/domain
+    - name: Create mock DNS configuration files
+      ansible.builtin.copy:
+        content: "# Mock DNS configuration file\n# Created by molecule test\nforwarders {\n    10.0.0.1;\n    8.8.8.8;\n}\n"
+        dest: /tmp/molecule_test/Windows/System32/dns/{{ item }}
+        mode: '0644'
+      loop:
+      - named.conf
+      - example.com.dns
+      - reverse.dns
+    - name: Create mock AD structure files
+      ansible.builtin.copy:
+        content: '# Mock AD structure file for {{ item.name }}
+
+          dn: OU={{ item.name }},{{ item.path }}
+
+          objectClass: organizationalUnit
+
+          ou: {{ item.name }}
+
+          '
+        dest: /tmp/molecule_test/Windows/NTDS/{{ item.name }}.ldif
+        mode: '0644'
+      loop:
+      - name: Users
+        path: DC=example,DC=com
+      - name: Groups
+        path: DC=example,DC=com
+      - name: Computers
+        path: DC=example,DC=com
+      - name: ServiceAccounts
+        path: DC=example,DC=com
+      - name: Tier 0
+        path: DC=example,DC=com
+      - name: Tier 1
+        path: DC=example,DC=com
+      - name: Tier 2
+        path: DC=example,DC=com
+  - name: Run role on Windows systems
+    when: is_windows
+    block:
+    - name: Set required credential variables
+      ansible.builtin.set_fact:
+        default_dc_cred: Administrator
+        domain_controller_join: Administrator
+        domain_join: Administrator
+        temp_password: P@ssw0rd123!
+      no_log: true
+    - name: Include activedirectorybuild role
+      ansible.builtin.include_role:
+        name: activedirectorybuild

@@ -1,0 +1,277 @@
+{
+  "module_name": "activedirectorybuild",
+  "items": [
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/aap-configuration/controller_credential_types.yml",
+      "status": "complete",
+      "description": "AAP credential types configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/aap-configuration/controller_credentials.yml",
+      "status": "complete",
+      "description": "AAP credentials configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/validate_credentials.yml",
+      "status": "complete",
+      "description": "Credential validation tasks",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/meta/main.yml",
+      "status": "complete",
+      "description": "Role metadata",
+      "notes": "Created standard meta/main.yml"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/main.yml",
+      "status": "complete",
+      "description": "Main tasks file",
+      "notes": "Main task file created to include all subtasks"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/base_os_config.yml",
+      "status": "complete",
+      "description": "Base OS configuration tasks",
+      "notes": "Base OS configuration tasks created"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_install.yml",
+      "status": "complete",
+      "description": "AD DS and DNS installation tasks",
+      "notes": "AD installation tasks created"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_forest.yml",
+      "status": "complete",
+      "description": "Forest and domain creation tasks",
+      "notes": "AD forest creation tasks created"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_policies.yml",
+      "status": "complete",
+      "description": "Password and lockout policies configuration tasks",
+      "notes": "Created AD policies tasks file with domain password policy, account lockout policy, and fine-grained password policies for privileged accounts."
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_structure.yml",
+      "status": "complete",
+      "description": "OUs, groups, and users creation tasks",
+      "notes": "Created AD structure tasks file with organizational units, security groups, and cluster name objects."
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_dns.yml",
+      "status": "complete",
+      "description": "DNS settings and forwarders configuration tasks",
+      "notes": "Created AD DNS tasks file with forwarders, reverse lookup zones, conditional forwarders, scavenging, and essential DNS records."
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_service_accounts.yml",
+      "status": "complete",
+      "description": "Service accounts and gMSAs configuration tasks",
+      "notes": "Created AD service accounts tasks file with standard service accounts, group managed service accounts (gMSAs), and security groups."
+    },
+    {
+      "category": "attributes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/defaults/main.yml",
+      "status": "complete",
+      "description": "Default variables for the role",
+      "notes": "Variables extracted from PowerShell script and converted to Ansible format"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/handlers/main.yml",
+      "status": "complete",
+      "description": "Handlers for service restarts",
+      "notes": "Created handlers/main.yml file with handlers for restarting DNS, AD DS, Netlogon services and Windows."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/molecule.yml",
+      "status": "complete",
+      "description": "Molecule scenario configuration",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/converge.yml",
+      "status": "complete",
+      "description": "Molecule converge playbook",
+      "notes": "Created molecule converge playbook that simulates the Active Directory structure under /tmp/molecule_test/ with mock files for AD components, DNS configuration, and registry settings."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/verify.yml",
+      "status": "complete",
+      "description": "Molecule verification tasks",
+      "notes": "Created molecule verify playbook that checks for the existence of mock AD files, DNS configuration, and registry settings. Added container-safe tests and tagged real-system tests with molecule-notest."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/create.yml",
+      "status": "complete",
+      "description": "Molecule create playbook",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/destroy.yml",
+      "status": "complete",
+      "description": "Molecule destroy playbook",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/.github/workflows/ansible-ci.yml",
+      "status": "complete",
+      "description": "GitHub Actions workflow for ansible-lint",
+      "notes": "Created GitHub workflow file for CI with ansible-lint and molecule tests."
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/README.md",
+      "status": "complete",
+      "description": "Role documentation",
+      "notes": "README.md created with comprehensive documentation"
+    },
+    {
+      "category": "recipes",
+      "source_path": "chef/cookbooks/activedirectorybuild/recipes/default.rb",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/main.yml",
+      "status": "complete",
+      "description": "Main task file that includes all other task files",
+      "notes": ""
+    },
+    {
+      "category": "recipes",
+      "source_path": "chef/cookbooks/activedirectorybuild/recipes/base_os_config.rb",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/base_os_config.yml",
+      "status": "complete",
+      "description": "Base OS configuration tasks",
+      "notes": ""
+    },
+    {
+      "category": "recipes",
+      "source_path": "chef/cookbooks/activedirectorybuild/recipes/ad_install.rb",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_install.yml",
+      "status": "complete",
+      "description": "Active Directory installation tasks",
+      "notes": ""
+    },
+    {
+      "category": "recipes",
+      "source_path": "chef/cookbooks/activedirectorybuild/recipes/ad_forest.rb",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_forest.yml",
+      "status": "complete",
+      "description": "Active Directory forest creation tasks",
+      "notes": ""
+    },
+    {
+      "category": "recipes",
+      "source_path": "chef/cookbooks/activedirectorybuild/recipes/ad_config.rb",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_config.yml",
+      "status": "complete",
+      "description": "Active Directory configuration tasks",
+      "notes": ""
+    },
+    {
+      "category": "attributes",
+      "source_path": "chef/cookbooks/activedirectorybuild/attributes/default.rb",
+      "target_path": "ansible/roles/activedirectorybuild/defaults/main.yml",
+      "status": "complete",
+      "description": "Default variables for the role",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "chef/cookbooks/activedirectorybuild/metadata.rb",
+      "target_path": "ansible/roles/activedirectorybuild/meta/main.yml",
+      "status": "complete",
+      "description": "Role metadata",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "chef/cookbooks/activedirectorybuild/README.md",
+      "target_path": "ansible/roles/activedirectorybuild/README.md",
+      "status": "complete",
+      "description": "Role documentation",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "chef/cookbooks/activedirectorybuild/examples/deploy.rb",
+      "target_path": "ansible/playbooks/deploy_active_directory.yml",
+      "status": "complete",
+      "description": "Sample playbook to use the role",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "chef/cookbooks/activedirectorybuild/examples/nodes.json",
+      "target_path": "ansible/inventory/windows.yml",
+      "status": "complete",
+      "description": "Sample inventory file",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "chef/cookbooks/activedirectorybuild/examples/secrets.json",
+      "target_path": "ansible/group_vars/windows_servers/vault.yml.example",
+      "status": "complete",
+      "description": "Example vault file for sensitive information",
+      "notes": ""
+    },
+    {
+      "category": "files",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/handlers/main.yml",
+      "status": "complete",
+      "description": "Handlers for ActiveDirectoryBuild role",
+      "notes": "Created handlers/main.yml file with handlers for restarting DNS, AD DS, Netlogon services and Windows."
+    },
+    {
+      "category": "files",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/.github/workflows/ansible-ci.yml",
+      "status": "complete",
+      "description": "GitHub workflow for CI",
+      "notes": "Created GitHub workflow file for CI with ansible-lint and molecule tests."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+---
+- name: restart dns
+  ansible.windows.win_service:
+    name: DNS
+    state: restarted
+  listen: restart dns
+- name: restart ad ds
+  ansible.windows.win_service:
+    name: NTDS
+    state: restarted
+  listen: restart ad ds
+- name: restart netlogon
+  ansible.windows.win_service:
+    name: Netlogon
+    state: restarted
+  listen: restart netlogon
+- name: restart windows
+  ansible.windows.win_reboot:
+    reboot_timeout: 3600
+    post_reboot_delay: 60
+  listen: restart windows

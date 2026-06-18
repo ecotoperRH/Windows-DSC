@@ -1,0 +1,28 @@
+---
+- name: Set domain password policy
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\nSet-ADDefaultDomainPasswordPolicy -Identity {{ ad_domain_name }} `\n  -ComplexityEnabled $true `\n  -LockoutDuration \"\
+      00:30:00\" `\n  -LockoutObservationWindow \"00:30:00\" `\n  -LockoutThreshold 5 `\n  -MaxPasswordAge \"42.00:00:00\" `\n  -MinPasswordAge \"1.00:00:00\" `\n\
+      \  -MinPasswordLength 12 `\n  -PasswordHistoryCount 24 `\n  -ReversibleEncryptionEnabled $false\n"
+- name: Set account lockout policy
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n$domain = Get-ADDomain\n$pdc = $domain.PDCEmulator\n\n# Set account lockout policy\nSet-ADDefaultDomainPasswordPolicy
+      -Identity {{ ad_domain_name }} `\n  -LockoutDuration \"00:30:00\" `\n  -LockoutObservationWindow \"00:30:00\" `\n  -LockoutThreshold 5\n\n# Verify the policy
+      was set\nGet-ADDefaultDomainPasswordPolicy\n"
+  register: lockout_policy_result
+- name: Display lockout policy result
+  ansible.builtin.debug:
+    var: lockout_policy_result.output
+- name: Set fine-grained password policies for privileged accounts
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n# Check if PSO already exists\n$psoName = \"PrivilegedAccountPolicy\"\n$psoExists = Get-ADFineGrainedPasswordPolicy
+      -Filter \"Name -eq '$psoName'\" -ErrorAction SilentlyContinue\n\nif (-not $psoExists) {\n  # Create new PSO for privileged accounts\n  New-ADFineGrainedPasswordPolicy
+      -Name $psoName `\n    -Precedence 10 `\n    -ComplexityEnabled $true `\n    -LockoutDuration \"01:00:00\" `\n    -LockoutObservationWindow \"01:00:00\" `\n\
+      \    -LockoutThreshold 3 `\n    -MaxPasswordAge \"30.00:00:00\" `\n    -MinPasswordAge \"1.00:00:00\" `\n    -MinPasswordLength 16 `\n    -PasswordHistoryCount
+      24 `\n    -ReversibleEncryptionEnabled $false\n  \n  # Apply PSO to admin groups\n  $adminGroups = @(\"Domain Admins\", \"Enterprise Admins\", \"Schema Admins\"\
+      )\n  foreach ($group in $adminGroups) {\n    try {\n      Add-ADFineGrainedPasswordPolicySubject -Identity $psoName -Subjects $group\n    } catch {\n      Write-Output
+      \"Could not apply PSO to $group. Error: $_\"\n    }\n  }\n} else {\n  Write-Output \"PSO $psoName already exists\"\n}\n"
+  register: pso_result
+- name: Display PSO result
+  ansible.builtin.debug:
+    var: pso_result.output

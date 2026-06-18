@@ -1,0 +1,48 @@
+---
+timezone: UTC
+execution_policy: RemoteSigned
+uac_setting: AlwaysNotify
+admin_path: C:\Admin
+api_folder_path: C:\API
+windows_features:
+  - AD-Domain-Services
+  - DNS
+  - RSAT-AD-Tools
+  - RSAT-DNS-Server
+domain_name: example.com
+netbios_name: EXAMPLE
+safe_mode_password: P@ssw0rd123!
+database_path: C:\Windows\NTDS
+sysvol_path: C:\Windows\SYSVOL
+log_path: C:\Windows\NTDS
+domain_mode: WinThreshold
+forest_mode: WinThreshold
+organizational_units:
+  - name: Users
+    path: DC=example,DC=com
+  - name: Groups
+    path: DC=example,DC=com
+  - name: Computers
+    path: DC=example,DC=com
+  - name: ServiceAccounts
+    path: DC=example,DC=com
+ad_groups:
+  - name: IT_Admins
+    path: OU=Groups,DC=example,DC=com
+    scope: Global
+    category: Security
+  - name: HR_Staff
+    path: OU=Groups,DC=example,DC=com
+    scope: Global
+    category: Security
+ad_users:
+  - name: admin
+    path: OU=Users,DC=example,DC=com
+    password: P@ssw0rd123!
+    groups:
+      - IT_Admins
+  - name: hr_user
+    path: OU=Users,DC=example,DC=com
+    password: P@ssw0rd123!
+    groups:
+      - HR_Staff

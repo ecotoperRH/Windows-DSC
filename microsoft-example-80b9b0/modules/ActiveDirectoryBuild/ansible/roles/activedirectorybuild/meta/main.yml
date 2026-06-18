@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  role_name: activedirectorybuild
+  author: Ansible Admin
+  description: Role to deploy and configure Active Directory on Windows Server
+  company: Example Inc.
+  license: MIT
+  min_ansible_version: 2.1
+  platforms:
+    - name: Windows
+      versions:
+        - 2016
+        - 2019
+        - 2022
+  galaxy_tags:
+    - windows
+    - active_directory
+    - domain
+    - ad
+    - directory
+dependencies:
+  - name: ansible.windows
+  - name: microsoft.ad

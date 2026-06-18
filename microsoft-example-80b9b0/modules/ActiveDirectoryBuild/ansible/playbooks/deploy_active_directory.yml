@@ -1,0 +1,11 @@
+- name: Deploy Active Directory
+  hosts: windows_servers
+  gather_facts: true
+  vars:
+    domain_name: corp.example.com
+    netbios_name: CORP
+  roles:
+  - role: activedirectorybuild
+    tags:
+    - ad
+    - windows

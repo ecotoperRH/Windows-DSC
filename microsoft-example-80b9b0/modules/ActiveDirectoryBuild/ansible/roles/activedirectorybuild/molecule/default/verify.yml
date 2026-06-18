@@ -1,0 +1,84 @@
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check if running on Windows
+    ansible.builtin.stat:
+      path: /tmp/molecule_test
+    register: molecule_test_dir
+  - name: Set platform fact
+    ansible.builtin.set_fact:
+      is_windows: '{{ ansible_os_family is defined and ansible_os_family == ''Windows'' }}'
+      is_molecule_test: '{{ molecule_test_dir.stat.exists }}'
+  - name: Run Linux container tests
+    when: not is_windows and is_molecule_test
+    block:
+    - name: Check if base directories exist
+      ansible.builtin.stat:
+        path: '{{ item }}'
+      register: dir_check
+      loop:
+      - /tmp/molecule_test/Windows/NTDS
+      - /tmp/molecule_test/Windows/SYSVOL
+      - /tmp/molecule_test/Admin
+      - /tmp/molecule_test/Windows/System32/dns
+    - name: Assert base directories exist
+      ansible.builtin.assert:
+        that:
+        - item.stat.exists
+        - item.stat.isdir
+        fail_msg: Directory {{ item.item }} does not exist or is not a directory
+        success_msg: Directory {{ item.item }} exists
+      loop: '{{ dir_check.results }}'
+    - name: Check if AD installation files exist
+      ansible.builtin.stat:
+        path: '{{ item }}'
+      register: ad_files_check
+      loop:
+      - /tmp/molecule_test/Windows/NTDS/ntds.dit
+      - /tmp/molecule_test/Windows/NTDS/edb.log
+      - /tmp/molecule_test/Windows/SYSVOL/sysvol
+      - /tmp/molecule_test/Windows/SYSVOL/domain
+    - name: Assert AD installation files exist
+      ansible.builtin.assert:
+        that:
+        - item.stat.exists
+        fail_msg: AD file {{ item.item }} does not exist
+        success_msg: AD file {{ item.item }} exists
+      loop: '{{ ad_files_check.results }}'
+  - name: Run Windows system tests
+    when: is_windows
+    block:
+    - name: Check if AD DS service is running
+      ansible.windows.win_service_info:
+        name: NTDS
+      register: ntds_service
+    - name: Assert AD DS service is running
+      ansible.builtin.assert:
+        that:
+        - ntds_service.exists
+        - ntds_service.state == 'running'
+        fail_msg: AD DS service is not running
+        success_msg: AD DS service is running
+    - name: Check if DNS service is running
+      ansible.windows.win_service_info:
+        name: DNS
+      register: dns_service
+    - name: Assert DNS service is running
+      ansible.builtin.assert:
+        that:
+        - dns_service.exists
+        - dns_service.state == 'running'
+        fail_msg: DNS service is not running
+        success_msg: DNS service is running
+    - name: Check if domain is accessible
+      ansible.windows.win_powershell:
+        script: "try {\n  $domain = Get-ADDomain\n  return @{\n    Success = $true\n    DomainName = $domain.DNSRoot\n  }\n} catch {\n  return @{\n    Success = $false\n
+          \   Error = $_.Exception.Message\n  }\n}\n"
+      register: domain_check
+    - name: Assert domain is accessible
+      ansible.builtin.assert:
+        that:
+        - domain_check.output.Success
+        fail_msg: 'Domain is not accessible: {{ domain_check.output.Error }}'
+        success_msg: 'Domain is accessible: {{ domain_check.output.DomainName }}'

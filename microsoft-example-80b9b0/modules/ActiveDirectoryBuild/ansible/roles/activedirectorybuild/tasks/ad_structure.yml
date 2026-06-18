@@ -1,0 +1,83 @@
+---
+- name: Create KDS Root Key for Group Managed Service Accounts
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n# Check if KDS Root Key exists\n$kdsRootKeys = Get-KdsRootKey\n\nif (-not $kdsRootKeys) {\n  # Create a new KDS
+      Root Key with a time offset to allow immediate use\n  $effectiveTime = (Get-Date).AddHours(-10)\n  Add-KdsRootKey -EffectiveTime $effectiveTime\n  Write-Output
+      \"Created new KDS Root Key\"\n} else {\n  Write-Output \"KDS Root Key already exists\"\n}\n"
+  register: kds_result
+- name: Display KDS Root Key result
+  ansible.builtin.debug:
+    var: kds_result.output
+- name: Create Tier 0 Organizational Units
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n$domainDN = (Get-ADDomain).DistinguishedName\n\n# Create Tier 0 OU structure\n$tier0Path = \"OU=Tier 0,$domainDN\"\
+      \n\n# Check if Tier 0 OU exists\nif (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$tier0Path'\" -ErrorAction SilentlyContinue)) {\n  New-ADOrganizationalUnit
+      -Name \"Tier 0\" -Path $domainDN -ProtectedFromAccidentalDeletion $true\n  Write-Output \"Created Tier 0 OU\"\n} else {\n  Write-Output \"Tier 0 OU already
+      exists\"\n}\n\n# Create sub-OUs under Tier 0\n$tier0SubOUs = @(\"Accounts\", \"Groups\", \"Service Accounts\", \"Servers\")\n\nforeach ($ou in $tier0SubOUs)
+      {\n  $ouPath = \"OU=$ou,$tier0Path\"\n  if (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$ouPath'\" -ErrorAction SilentlyContinue)) {\n \
+      \   New-ADOrganizationalUnit -Name $ou -Path $tier0Path -ProtectedFromAccidentalDeletion $true\n    Write-Output \"Created $ou OU under Tier 0\"\n  } else {\n\
+      \    Write-Output \"$ou OU under Tier 0 already exists\"\n  }\n}\n"
+  register: tier0_ou_result
+- name: Display Tier 0 OU creation result
+  ansible.builtin.debug:
+    var: tier0_ou_result.output
+- name: Create Tier 1 Organizational Units
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n$domainDN = (Get-ADDomain).DistinguishedName\n\n# Create Tier 1 OU structure\n$tier1Path = \"OU=Tier 1,$domainDN\"\
+      \n\n# Check if Tier 1 OU exists\nif (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$tier1Path'\" -ErrorAction SilentlyContinue)) {\n  New-ADOrganizationalUnit
+      -Name \"Tier 1\" -Path $domainDN -ProtectedFromAccidentalDeletion $true\n  Write-Output \"Created Tier 1 OU\"\n} else {\n  Write-Output \"Tier 1 OU already
+      exists\"\n}\n\n# Create sub-OUs under Tier 1\n$tier1SubOUs = @(\"Accounts\", \"Groups\", \"Service Accounts\", \"Servers\")\n\nforeach ($ou in $tier1SubOUs)
+      {\n  $ouPath = \"OU=$ou,$tier1Path\"\n  if (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$ouPath'\" -ErrorAction SilentlyContinue)) {\n \
+      \   New-ADOrganizationalUnit -Name $ou -Path $tier1Path -ProtectedFromAccidentalDeletion $true\n    Write-Output \"Created $ou OU under Tier 1\"\n  } else {\n\
+      \    Write-Output \"$ou OU under Tier 1 already exists\"\n  }\n}\n"
+  register: tier1_ou_result
+- name: Display Tier 1 OU creation result
+  ansible.builtin.debug:
+    var: tier1_ou_result.output
+- name: Create Tier 2 Organizational Units
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n$domainDN = (Get-ADDomain).DistinguishedName\n\n# Create Tier 2 OU structure\n$tier2Path = \"OU=Tier 2,$domainDN\"\
+      \n\n# Check if Tier 2 OU exists\nif (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$tier2Path'\" -ErrorAction SilentlyContinue)) {\n  New-ADOrganizationalUnit
+      -Name \"Tier 2\" -Path $domainDN -ProtectedFromAccidentalDeletion $true\n  Write-Output \"Created Tier 2 OU\"\n} else {\n  Write-Output \"Tier 2 OU already
+      exists\"\n}\n\n# Create sub-OUs under Tier 2\n$tier2SubOUs = @(\"Accounts\", \"Groups\", \"Workstations\", \"Servers\")\n\nforeach ($ou in $tier2SubOUs) {\n\
+      \  $ouPath = \"OU=$ou,$tier2Path\"\n  if (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$ouPath'\" -ErrorAction SilentlyContinue)) {\n   \
+      \ New-ADOrganizationalUnit -Name $ou -Path $tier2Path -ProtectedFromAccidentalDeletion $true\n    Write-Output \"Created $ou OU under Tier 2\"\n  } else {\n\
+      \    Write-Output \"$ou OU under Tier 2 already exists\"\n  }\n}\n"
+  register: tier2_ou_result
+- name: Display Tier 2 OU creation result
+  ansible.builtin.debug:
+    var: tier2_ou_result.output
+- name: Create Admin Security Groups
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n$domainDN = (Get-ADDomain).DistinguishedName\n$tier0GroupsPath = \"OU=Groups,OU=Tier 0,$domainDN\"\n$tier1GroupsPath
+      = \"OU=Groups,OU=Tier 1,$domainDN\"\n$tier2GroupsPath = \"OU=Groups,OU=Tier 2,$domainDN\"\n\n# Create Tier 0 Admin Groups\n$tier0Groups = @(\n  \"Admin-Tier0-ServerAdmins\"\
+      ,\n  \"Admin-Tier0-DomainAdmins\",\n  \"Admin-Tier0-EnterpriseAdmins\",\n  \"Admin-Tier0-SchemaAdmins\"\n)\n\nforeach ($group in $tier0Groups) {\n  if (-not
+      (Get-ADGroup -Filter \"Name -eq '$group'\" -ErrorAction SilentlyContinue)) {\n    New-ADGroup -Name $group -GroupCategory Security -GroupScope Global -Path
+      $tier0GroupsPath\n    Write-Output \"Created $group security group\"\n  } else {\n    Write-Output \"$group security group already exists\"\n  }\n}\n\n# Create
+      Tier 1 Admin Groups\n$tier1Groups = @(\n  \"Admin-Tier1-ServerAdmins\",\n  \"Admin-Tier1-AppAdmins\",\n  \"Admin-Tier1-DBAdmins\"\n)\n\nforeach ($group in $tier1Groups)
+      {\n  if (-not (Get-ADGroup -Filter \"Name -eq '$group'\" -ErrorAction SilentlyContinue)) {\n    New-ADGroup -Name $group -GroupCategory Security -GroupScope
+      Global -Path $tier1GroupsPath\n    Write-Output \"Created $group security group\"\n  } else {\n    Write-Output \"$group security group already exists\"\n \
+      \ }\n}\n\n# Create Tier 2 Admin Groups\n$tier2Groups = @(\n  \"Admin-Tier2-DesktopSupport\",\n  \"Admin-Tier2-HelpDesk\",\n  \"Admin-Tier2-AppSupport\"\n\
+      )\n\nforeach ($group in $tier2Groups) {\n  if (-not (Get-ADGroup -Filter \"Name -eq '$group'\" -ErrorAction SilentlyContinue)) {\n    New-ADGroup -Name $group
+      -GroupCategory Security -GroupScope Global -Path $tier2GroupsPath\n    Write-Output \"Created $group security group\"\n  } else {\n    Write-Output \"$group
+      security group already exists\"\n  }\n}\n"
+  register: admin_groups_result
+- name: Display Admin Groups creation result
+  ansible.builtin.debug:
+    var: admin_groups_result.output
+- name: Pre-stage Cluster Name Objects (CNOs)
+  ansible.windows.win_powershell:
+    script: "Import-Module ActiveDirectory\n\n$domainDN = (Get-ADDomain).DistinguishedName\n\n# Create Computers OU if it doesn't exist\n$computersOUPath = \"OU=Computers,$domainDN\"\
+      \nif (-not (Get-ADOrganizationalUnit -Filter \"DistinguishedName -eq '$computersOUPath'\" -ErrorAction SilentlyContinue)) {\n  New-ADOrganizationalUnit -Name
+      \"Computers\" -Path $domainDN -ProtectedFromAccidentalDeletion $true\n  Write-Output \"Created Computers OU\"\n} else {\n  Write-Output \"Computers OU already
+      exists\"\n}\n\n# Create Clusters OU if it doesn't exist\n$clustersOUPath = \"OU=Clusters,$computersOUPath\"\nif (-not (Get-ADOrganizationalUnit -Filter \"\
+      DistinguishedName -eq '$clustersOUPath'\" -ErrorAction SilentlyContinue)) {\n  New-ADOrganizationalUnit -Name \"Clusters\" -Path $computersOUPath -ProtectedFromAccidentalDeletion
+      $true\n  Write-Output \"Created Clusters OU\"\n} else {\n  Write-Output \"Clusters OU already exists\"\n}\n\n# Pre-stage CNOs\n$clusterNames = @(\n  \"CL-SQL\"\
+      ,\n  \"CL-APP\",\n  \"CL-FILE\"\n)\n\nforeach ($clusterName in $clusterNames) {\n  if (-not (Get-ADComputer -Filter \"Name -eq '$clusterName'\" -ErrorAction
+      SilentlyContinue)) {\n    New-ADComputer -Name $clusterName -Path $clustersOUPath -Enabled $true\n    \n    # Enable CNO for cluster use\n    $clusterComputer
+      = Get-ADComputer -Identity $clusterName\n    Set-ADObject -Identity $clusterComputer.DistinguishedName -Add @{\"msDS-SupportedEncryptionTypes\" = 31}\n    \n\
+      \    Write-Output \"Created and configured CNO for $clusterName\"\n  } else {\n    Write-Output \"CNO for $clusterName already exists\"\n  }\n}\n"
+  register: cno_result
+- name: Display CNO creation result
+  ansible.builtin.debug:
+    var: cno_result.output

@@ -1,0 +1,69 @@
+---
+- name: Configure DNS Forwarders
+  ansible.windows.win_powershell:
+    script: "Import-Module DnsServer\n\n# Set DNS forwarders\n$forwarders = @(\"8.8.8.8\", \"8.8.4.4\")\n\n# Get current forwarders\n$currentForwarders = Get-DnsServerForwarder
+      | Select-Object -ExpandProperty IPAddress | ForEach-Object { $_.IPAddressToString }\n\n# Check if forwarders need to be updated\n$needsUpdate = $false\nforeach
+      ($forwarder in $forwarders) {\n  if ($forwarder -notin $currentForwarders) {\n    $needsUpdate = $true\n    break\n  }\n}\n\nif ($needsUpdate) {\n  # Set
+      DNS forwarders\n  Set-DnsServerForwarder -IPAddress $forwarders -PassThru\n  Write-Output \"DNS forwarders updated to: $($forwarders -join ', ')\"\n} else {\n\
+      \  Write-Output \"DNS forwarders already configured correctly\"\n}\n"
+  register: dns_forwarders_result
+  notify: restart dns
+- name: Display DNS forwarders result
+  ansible.builtin.debug:
+    var: dns_forwarders_result.output
+- name: Create DNS Reverse Lookup Zones
+  ansible.windows.win_powershell:
+    script: "Import-Module DnsServer\n\n# Define reverse lookup zones to create\n$reverseZones = @(\n  @{\n    NetworkID = \"10.0.0.0/8\"\n    ZoneName = \"0.10.in-addr.arpa\"\
+      \n  },\n  @{\n    NetworkID = \"172.16.0.0/12\"\n    ZoneName = \"16.172.in-addr.arpa\"\n  },\n  @{\n    NetworkID = \"192.168.0.0/16\"\n    ZoneName = \"168.192.in-addr.arpa\"\
+      \n  }\n)\n\nforeach ($zone in $reverseZones) {\n  # Check if zone exists\n  $existingZone = Get-DnsServerZone -Name $zone.ZoneName -ErrorAction SilentlyContinue\n\
+      \  \n  if (-not $existingZone) {\n    # Create reverse lookup zone\n    Add-DnsServerPrimaryZone -NetworkID $zone.NetworkID -ReplicationScope \"Domain\"\n\
+      \    Write-Output \"Created reverse lookup zone: $($zone.ZoneName)\"\n  } else {\n    Write-Output \"Reverse lookup zone $($zone.ZoneName) already exists\"\n\
+      \  }\n}\n"
+  register: reverse_zones_result
+  notify: restart dns
+- name: Display reverse zones result
+  ansible.builtin.debug:
+    var: reverse_zones_result.output
+- name: Create DNS Conditional Forwarders
+  ansible.windows.win_powershell:
+    script: "Import-Module DnsServer\n\n# Define conditional forwarders to create\n$conditionalForwarders = @(\n  @{\n    Name = \"partner.local\"\n    MasterServers
+      = @(\"192.168.10.10\", \"192.168.10.11\")\n  },\n  @{\n    Name = \"vendor.com\"\n    MasterServers = @(\"10.50.10.10\", \"10.50.10.11\")\n  }\n)\n\nforeach
+      ($forwarder in $conditionalForwarders) {\n  # Check if conditional forwarder exists\n  $existingForwarder = Get-DnsServerZone -Name $forwarder.Name -ErrorAction
+      SilentlyContinue\n  \n  if (-not $existingForwarder) {\n    # Create conditional forwarder\n    Add-DnsServerConditionalForwarderZone -Name $forwarder.Name
+      -MasterServers $forwarder.MasterServers -ReplicationScope \"Domain\"\n    Write-Output \"Created conditional forwarder: $($forwarder.Name) to $($forwarder.MasterServers
+      -join ', ')\"\n  } else {\n    # Update existing conditional forwarder\n    Set-DnsServerConditionalForwarderZone -Name $forwarder.Name -MasterServers $forwarder.MasterServers\n\
+      \    Write-Output \"Updated conditional forwarder: $($forwarder.Name)\"\n  }\n}\n"
+  register: conditional_forwarders_result
+  notify: restart dns
+- name: Display conditional forwarders result
+  ansible.builtin.debug:
+    var: conditional_forwarders_result.output
+- name: Configure DNS Scavenging
+  ansible.windows.win_powershell:
+    script: "Import-Module DnsServer\n\n# Configure DNS scavenging settings\n$server = $env:COMPUTERNAME\n\n# Enable scavenging on the server\nSet-DnsServerScavenging
+      -ScavengingState $true -ScavengingInterval 7.00:00:00 -RefreshInterval 7.00:00:00 -NoRefreshInterval 7.00:00:00\n\n# Get all DNS zones\n$zones = Get-DnsServerZone
+      | Where-Object { $_.IsAutoCreated -eq $false -and $_.ZoneType -eq \"Primary\" }\n\nforeach ($zone in $zones) {\n  # Enable scavenging for each zone\n  Set-DnsServerZoneAging
+      -Name $zone.ZoneName -Aging $true -RefreshInterval 7.00:00:00 -NoRefreshInterval 7.00:00:00\n  Write-Output \"Enabled scavenging for zone: $($zone.ZoneName)\"\
+      \n}\n\nWrite-Output \"DNS scavenging configured successfully\"\n"
+  register: dns_scavenging_result
+  notify: restart dns
+- name: Display DNS scavenging result
+  ansible.builtin.debug:
+    var: dns_scavenging_result.output
+- name: Create Essential DNS Records
+  ansible.windows.win_powershell:
+    script: "Import-Module DnsServer\n\n$domain = Get-ADDomain\n$zoneName = $domain.DNSRoot\n\n# Define essential DNS records to create\n$dnsRecords = @(\n  @{\n\
+      \    Name = \"intranet\"\n    Type = \"A\"\n    Data = \"10.0.0.100\"\n  },\n  @{\n    Name = \"mail\"\n    Type = \"A\"\n    Data = \"10.0.0.25\"\n  },\n \
+      \ @{\n    Name = \"vpn\"\n    Type = \"A\"\n    Data = \"10.0.0.200\"\n  },\n  @{\n    Name = \"_msdcs\"\n    Type = \"CNAME\"\n    Data = \"$($domain.DNSRoot).\"\
+      \n  }\n)\n\nforeach ($record in $dnsRecords) {\n  # Check if record exists\n  $existingRecord = $null\n  \n  if ($record.Type -eq \"A\") {\n    $existingRecord
+      = Get-DnsServerResourceRecord -ZoneName $zoneName -Name $record.Name -RRType $record.Type -ErrorAction SilentlyContinue\n  } elseif ($record.Type -eq \"CNAME\"\
+      ) {\n    $existingRecord = Get-DnsServerResourceRecord -ZoneName $zoneName -Name $record.Name -RRType $record.Type -ErrorAction SilentlyContinue\n  }\n  \n\
+      \  if (-not $existingRecord) {\n    # Create DNS record\n    if ($record.Type -eq \"A\") {\n      Add-DnsServerResourceRecordA -ZoneName $zoneName -Name $record.Name
+      -IPv4Address $record.Data\n      Write-Output \"Created A record: $($record.Name).$zoneName -> $($record.Data)\"\n    } elseif ($record.Type -eq \"CNAME\")
+      {\n      Add-DnsServerResourceRecordCName -ZoneName $zoneName -Name $record.Name -HostNameAlias $record.Data\n      Write-Output \"Created CNAME record: $($record.Name).$zoneName
+      -> $($record.Data)\"\n    }\n  } else {\n    Write-Output \"DNS record $($record.Name).$zoneName already exists\"\n  }\n}\n"
+  register: dns_records_result
+  notify: restart dns
+- name: Display DNS records result
+  ansible.builtin.debug:
+    var: dns_records_result.output

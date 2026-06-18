@@ -1,0 +1,26 @@
+---
+- name: Create OU structure
+  ansible.windows.win_powershell:
+    script: "$ErrorActionPreference = \"Stop\"\n\n# Create base OUs\n{% for ou in organizational_units %}\ntry {\n  $ouPath = \"{{ ou.path }}\"\n  $ouName = \"\
+      {{ ou.name }}\"\n  \n  # Check if OU exists\n  if (-not [adsi]::Exists(\"LDAP://OU=$ouName,$ouPath\")) {\n    New-ADOrganizationalUnit -Name $ouName -Path
+      $ouPath -ProtectedFromAccidentalDeletion $false\n    Write-Output \"Created OU: $ouName at $ouPath\"\n  } else {\n    Write-Output \"OU already exists: $ouName
+      at $ouPath\"\n  }\n} catch {\n  Write-Error \"Failed to create OU $ouName at $ouPath. Error: $_\"\n  throw $_\n}\n{% endfor %}\n"
+  register: create_ou_result
+- name: Create AD groups
+  ansible.windows.win_powershell:
+    script: "$ErrorActionPreference = \"Stop\"\n\n{% for group in ad_groups %}\ntry {\n  $groupName = \"{{ group.name }}\"\n  $groupPath = \"{{ group.path }}\"\n\
+      \  $groupScope = \"{{ group.scope | default('Global') }}\"\n  $groupCategory = \"{{ group.category | default('Security') }}\"\n  \n  # Check if group exists\n\
+      \  if (-not (Get-ADGroup -Filter {Name -eq $groupName} -ErrorAction SilentlyContinue)) {\n    New-ADGroup -Name $groupName -Path $groupPath -GroupScope $groupScope
+      -GroupCategory $groupCategory\n    Write-Output \"Created group: $groupName at $groupPath\"\n  } else {\n    Write-Output \"Group already exists: $groupName\"\
+      \n  }\n} catch {\n  Write-Error \"Failed to create group $groupName. Error: $_\"\n  throw $_\n}\n{% endfor %}\n"
+  register: create_groups_result
+- name: Create AD users
+  ansible.windows.win_powershell:
+    script: "$ErrorActionPreference = \"Stop\"\n\n{% for user in ad_users %}\ntry {\n  $userName = \"{{ user.name }}\"\n  $userPath = \"{{ user.path }}\"\n  $userPassword
+      = ConvertTo-SecureString -String \"{{ user.password }}\" -AsPlainText -Force\n  \n  # Check if user exists\n  if (-not (Get-ADUser -Filter {SamAccountName
+      -eq $userName} -ErrorAction SilentlyContinue)) {\n    New-ADUser -Name $userName -SamAccountName $userName -UserPrincipalName \"$userName@{{ domain_name }}\"\
+      \ `\n              -Path $userPath -AccountPassword $userPassword -Enabled $true -PasswordNeverExpires $true\n    Write-Output \"Created user: $userName at
+      $userPath\"\n    \n    # Add user to groups if specified\n    {% if user.groups is defined %}\n    {% for group in user.groups %}\n    Add-ADGroupMember -Identity
+      \"{{ group }}\" -Members $userName\n    Write-Output \"Added $userName to group {{ group }}\"\n    {% endfor %}\n    {% endif %}\n  } else {\n    Write-Output
+      \"User already exists: $userName\"\n  }\n} catch {\n  Write-Error \"Failed to create user $userName. Error: $_\"\n  throw $_\n}\n{% endfor %}\n"
+  register: create_users_result
