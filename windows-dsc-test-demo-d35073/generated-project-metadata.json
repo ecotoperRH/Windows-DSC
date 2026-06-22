@@ -1,0 +1,80 @@
+[
+  {
+    "name": "ActiveDirectoryBuild",
+    "path": "ActiveDirectoryBuild.ps1",
+    "description": "Primary Active Directory Domain Controller configuration with forest creation, OU structure, security groups, and DNS settings.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "ActiveDirectoryHub",
+    "path": "ActiveDirectoryHub.ps1",
+    "description": "Secondary Domain Controller configuration for hub sites.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "AzureConnect",
+    "path": "AzureConnect.ps1",
+    "description": "Azure connectivity configuration for hybrid cloud scenarios.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "MemberServer",
+    "path": "MemberServer.ps1",
+    "description": "Standard member server configuration with domain join and baseline security settings.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "MemberServerSQL",
+    "path": "MemberServerSQL.ps1",
+    "description": "SQL Server member configuration with specialized SQL settings.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "RedForestBuild",
+    "path": "RedForestBuild.ps1",
+    "description": "Enhanced Security Administrative Forest (Red Forest) configuration.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "S2DHypervisorDell",
+    "path": "S2DHypervisorDell.ps1",
+    "description": "Storage Spaces Direct hypervisor configuration for Dell hardware.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "StandAloneHypervisorDell",
+    "path": "StandAloneHypervisorDell.ps1",
+    "description": "Standalone Hyper-V hypervisor configuration for Dell hardware.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Host Guardian Service",
+    "path": "host-guardian-service/",
+    "description": "Host Guardian Service for Shielded VMs in a guarded fabric.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Group Policy Baseline",
+    "path": "group-policy-baseline/",
+    "description": "Security baseline Group Policy Objects for domain security.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Code Integrity",
+    "path": "code-integrity/",
+    "description": "Windows Defender Application Control policies for code integrity.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "One-Time Configuration",
+    "path": "one-time-config/",
+    "description": "Special use case configurations and one-time setup scripts.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Runbooks",
+    "path": "runbooks/",
+    "description": "Automation runbooks for various administrative tasks.",
+    "technology": "PowerShell"
+  }
+]
