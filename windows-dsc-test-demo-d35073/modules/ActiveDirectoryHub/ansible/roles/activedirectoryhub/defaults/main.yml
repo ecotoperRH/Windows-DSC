@@ -1,0 +1,10 @@
+---
+domain_name: example.local
+ntds_path: C:\Windows\NTDS
+sysvol_path: C:\Windows\SYSVOL
+log_path: C:\Logs\AD
+ad_features:
+  - AD-Domain-Services
+  - DNS
+  - RSAT-AD-Tools
+  - RSAT-DNS-Server

@@ -1,0 +1,21 @@
+- name: Converge
+  hosts: all
+  vars:
+    domain_name: test.local
+    domain_join:
+      username: administrator
+      password: Password123!
+    domain_controller_join:
+      password: SafeMode123!
+    ntds_path: /tmp/ntds
+    sysvol_path: /tmp/sysvol
+    log_path: /tmp/logs
+    ad_features:
+    - AD-Domain-Services
+    - DNS
+  tasks:
+  - name: Include activedirectoryhub role
+    ansible.builtin.include_role:
+      name: activedirectoryhub
+    vars:
+      molecule_test: true

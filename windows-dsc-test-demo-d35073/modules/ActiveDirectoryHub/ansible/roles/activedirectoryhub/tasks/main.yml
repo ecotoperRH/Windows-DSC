@@ -1,0 +1,35 @@
+---
+- name: Include credential validation
+  ansible.builtin.include_tasks: validate_credentials.yml
+  tags:
+    - always
+- name: Include preflight checks
+  ansible.builtin.include_tasks: preflight_checks.yml
+  tags:
+    - preflight
+    - setup
+- name: Include directory management tasks
+  ansible.builtin.include_tasks: manage_directories.yml
+  tags:
+    - directories
+    - setup
+- name: Include OS configuration tasks
+  ansible.builtin.include_tasks: configure_os.yml
+  tags:
+    - configure
+    - setup
+- name: Include Windows feature installation tasks
+  ansible.builtin.include_tasks: install_features.yml
+  tags:
+    - features
+    - setup
+- name: Include domain join tasks
+  ansible.builtin.include_tasks: join_domain.yml
+  tags:
+    - domain
+    - setup
+- name: Include service monitoring tasks
+  ansible.builtin.include_tasks: monitor_services.yml
+  tags:
+    - monitor
+    - services

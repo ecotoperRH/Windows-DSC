@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: activedirectoryhub
+  author: Ansible Migration Team
+  description: Role to configure Active Directory Domain Controller
+  company: Example Corp
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Windows
+      versions:
+        - all
+  galaxy_tags:
+    - windows
+    - activedirectory
+    - domain
+    - controller
+dependencies: []

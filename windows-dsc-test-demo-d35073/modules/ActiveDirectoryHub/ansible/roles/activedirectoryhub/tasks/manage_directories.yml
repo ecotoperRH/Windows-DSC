@@ -1,0 +1,30 @@
+---
+- name: Create required directories
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ ntds_path }}"
+    - "{{ sysvol_path }}"
+    - "{{ log_path }}"
+  register: directory_creation
+  tags:
+    - molecule-notest
+- name: Set NTFS permissions on directories
+  ansible.windows.win_acl:
+    path: "{{ item }}"
+    user: SYSTEM
+    rights: FullControl
+    type: allow
+    state: present
+    inherit: true
+  loop:
+    - "{{ ntds_path }}"
+    - "{{ sysvol_path }}"
+    - "{{ log_path }}"
+  register: acl_config
+  tags:
+    - molecule-notest
+- name: Display directory creation results
+  ansible.builtin.debug:
+    msg: "Directories created: {{ directory_creation.changed }} Permissions set: {{ acl_config.changed }}"

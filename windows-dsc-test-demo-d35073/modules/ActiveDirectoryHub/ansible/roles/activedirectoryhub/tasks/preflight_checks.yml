@@ -1,0 +1,72 @@
+---
+- name: Check Windows version
+  ansible.windows.win_shell: '$ErrorActionPreference = "Stop"
+
+    $osInfo = Get-WmiObject -Class Win32_OperatingSystem
+
+    $osInfo | Select-Object Caption, Version, OSArchitecture | ConvertTo-Json
+
+    '
+  register: os_info
+  changed_when: false
+  tags:
+    - molecule-notest
+- name: Parse OS info
+  ansible.builtin.set_fact:
+    os_details: "{{ os_info.stdout | from_json }}"
+  when: os_info is defined
+- name: Display OS information
+  ansible.builtin.debug:
+    msg: Running on {{ os_details.Caption | default('Unknown OS') }} ({{ os_details.Version | default('Unknown version') }}) {{ os_details.OSArchitecture |
+      default('Unknown architecture') }}
+- name: Check available disk space
+  ansible.windows.win_shell: '$ErrorActionPreference = "Stop"
+
+    $drives = Get-WmiObject -Class Win32_LogicalDisk -Filter "DriveType=3"
+
+    $drives | Select-Object DeviceID, @{Name="SizeGB";Expression={[math]::Round($_.Size/1GB, 2)}}, @{Name="FreeGB";Expression={[math]::Round($_.FreeSpace/1GB, 2)}}
+    | ConvertTo-Json
+
+    '
+  register: disk_info
+  changed_when: false
+  tags:
+    - molecule-notest
+- name: Parse disk info
+  ansible.builtin.set_fact:
+    disk_details: "{{ disk_info.stdout | from_json }}"
+  when: disk_info is defined
+- name: Display disk space information
+  ansible.builtin.debug:
+    msg: "Disk {{ item.DeviceID | default('Unknown') }} - Total: {{ item.SizeGB | default('Unknown') }}GB, Free: {{ item.FreeGB | default('Unknown') }}GB"
+  loop: "{{ disk_details | default([]) }}"
+  loop_control:
+    label: "{{ item.DeviceID | default('Unknown') }}"
+- name: Check if system has enough memory
+  ansible.windows.win_shell: '$ErrorActionPreference = "Stop"
+
+    $memory = Get-WmiObject -Class Win32_ComputerSystem
+
+    $memoryGB = [math]::Round($memory.TotalPhysicalMemory/1GB, 2)
+
+    @{ "TotalMemoryGB" = $memoryGB } | ConvertTo-Json
+
+    '
+  register: memory_info
+  changed_when: false
+  tags:
+    - molecule-notest
+- name: Parse memory info
+  ansible.builtin.set_fact:
+    memory_details: "{{ memory_info.stdout | from_json }}"
+  when: memory_info is defined
+- name: Display memory information
+  ansible.builtin.debug:
+    msg: "Total memory: {{ memory_details.TotalMemoryGB | default('Unknown') }}GB"
+- name: Verify minimum requirements
+  ansible.builtin.assert:
+    that:
+      - memory_details.TotalMemoryGB | default(2.0) | float >= 2.0
+      - disk_details | default([]) | length > 0
+    fail_msg: System does not meet minimum requirements for Active Directory Domain Controller
+    success_msg: System meets minimum requirements for Active Directory Domain Controller

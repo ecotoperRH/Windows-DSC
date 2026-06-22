@@ -1,0 +1,32 @@
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check if directories were created
+    ansible.builtin.stat:
+      path: '{{ item }}'
+    register: dir_check
+    loop:
+    - /tmp/ntds
+    - /tmp/sysvol
+    - /tmp/logs
+    failed_when: not dir_check.stat.exists
+  - name: Verify role variables are defined
+    ansible.builtin.assert:
+      that:
+      - domain_name is defined
+      - domain_join is defined
+      - domain_controller_join is defined
+      - ntds_path is defined
+      - sysvol_path is defined
+      - log_path is defined
+      - ad_features is defined
+      fail_msg: Required variables are not defined
+      success_msg: All required variables are defined
+  - name: Check Windows features (would be skipped in molecule)
+    ansible.windows.win_shell: Get-WindowsFeature -Name AD-Domain-Services | Select-Object -ExpandProperty InstallState
+    register: feature_check
+    changed_when: false
+    failed_when: false
+    tags:
+    - molecule-notest

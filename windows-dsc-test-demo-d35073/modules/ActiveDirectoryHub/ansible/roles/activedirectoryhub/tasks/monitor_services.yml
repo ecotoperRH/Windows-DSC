@@ -1,0 +1,29 @@
+---
+- name: Ensure critical AD services are running
+  ansible.windows.win_service:
+    name: "{{ item }}"
+    state: started
+    start_mode: auto
+  loop:
+    - NTDS
+    - DNS
+    - Netlogon
+    - DFSR
+    - KDC
+    - W32Time
+  register: service_status
+- name: Display service status
+  ansible.builtin.debug:
+    msg: Service {{ item.name }} is {{ item.state }}
+  loop: "{{ service_status.results }}"
+- name: Check Active Directory replication status
+  ansible.windows.win_shell: '$ErrorActionPreference = "Stop" try { $repl = repadmin /showrepl $repl | Out-String } catch { Write-Host "Error checking replication:
+    $_" exit 1 } '
+  register: replication_status
+  changed_when: false
+  tags:
+    - molecule-notest
+- name: Display replication status
+  ansible.builtin.debug:
+    var: replication_status.stdout_lines
+  when: replication_status is defined

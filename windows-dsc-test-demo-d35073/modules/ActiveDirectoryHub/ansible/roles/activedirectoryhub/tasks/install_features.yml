@@ -1,0 +1,21 @@
+---
+- name: Install Windows features for Active Directory
+  ansible.windows.win_feature:
+    name: "{{ ad_features }}"
+    state: present
+    include_sub_features: true
+  register: feature_install
+  tags:
+    - molecule-notest
+- name: Display feature installation results
+  ansible.builtin.debug:
+    msg: "Features installed: {{ feature_install.changed | default(false) }} Reboot required: {{ feature_install.reboot_required | default(false) }} Features installed:
+      {{ feature_install.feature_result | default([]) | map(attribute='display_name') | list }} "
+- name: Reboot if required by feature installation
+  ansible.windows.win_reboot:
+    msg: Rebooting due to AD feature installation
+    pre_reboot_delay: 15
+    post_reboot_delay: 60
+  when: feature_install.reboot_required | default(false)
+  tags:
+    - molecule-notest

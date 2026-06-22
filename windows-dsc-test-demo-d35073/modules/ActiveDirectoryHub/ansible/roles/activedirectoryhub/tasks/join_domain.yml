@@ -1,0 +1,34 @@
+---
+- name: Wait for domain availability
+  ansible.windows.win_shell:
+    cmd: '$ErrorActionPreference = "Stop" try { $domain = "{{ domain_name }}" $dc = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext(''Domain'',
+      $domain))) $dc.DomainControllers | Select-Object -First 1 | Out-String $true } catch { Write-Host "Domain not available: $_" $false } '
+  register: domain_available
+  until: domain_available.stdout | trim | bool
+  retries: 30
+  delay: 10
+  ignore_errors: true
+  tags:
+    - molecule-notest
+- name: Display domain availability status
+  ansible.builtin.debug:
+    msg: Domain {{ domain_name }} is {{ 'available' if domain_available.stdout | trim | bool else 'not available' }}
+- name: Configure as domain controller
+  microsoft.ad.domain_controller:
+    dns_domain_name: "{{ domain_name }}"
+    domain_admin_user: "{{ domain_join.username }}"
+    domain_admin_password: "{{ domain_join.password }}"
+    safe_mode_password: "{{ domain_controller_join.password }}"
+    state: domain_controller
+    install_dns: true
+  register: dc_result
+  tags:
+    - molecule-notest
+- name: Reboot after domain controller promotion if needed
+  ansible.windows.win_reboot:
+    msg: Rebooting after domain controller promotion
+    pre_reboot_delay: 15
+    post_reboot_delay: 60
+  when: dc_result.reboot_required | default(false)
+  tags:
+    - molecule-notest

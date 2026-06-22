@@ -1,0 +1,15 @@
+---
+- name: Restart DNS service
+  ansible.windows.win_service:
+    name: DNS
+    state: restarted
+  listen: restart_dns
+- name: Restart AD services
+  ansible.windows.win_service:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - NTDS
+    - Netlogon
+    - DFSR
+  listen: restart_ad_services
