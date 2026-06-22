@@ -1,0 +1,68 @@
+[
+  {
+    "name": "ActiveDirectoryBuild",
+    "path": "PowerShell/ActiveDirectoryBuild",
+    "description": "Configures the first domain controller in a forest, sets password policies, creates AD sites, KDS root keys, security groups, OUs, and DNS settings.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "ActiveDirectoryHub",
+    "path": "PowerShell/ActiveDirectoryHub",
+    "description": "Adds additional domain controllers to an existing forest.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "RedForestBuild",
+    "path": "PowerShell/RedForestBuild",
+    "description": "Configures a separate \"Red Forest\" for enhanced security administrative environment (ESAE).",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "AzureConnect",
+    "path": "PowerShell/AzureConnect",
+    "description": "Basic configuration for connecting servers to Azure.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "MemberServer",
+    "path": "PowerShell/MemberServer",
+    "description": "Standard configuration for domain-joined servers.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "MemberServerSQL",
+    "path": "PowerShell/MemberServerSQL",
+    "description": "SQL Server installation and configuration.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "S2DHypervisorDell",
+    "path": "PowerShell/S2DHypervisorDell",
+    "description": "Configures Dell servers for Storage Spaces Direct (S2D) Hyper-V.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "StandAloneHypervisorDell",
+    "path": "PowerShell/StandAloneHypervisorDell",
+    "description": "Configures standalone Dell Hyper-V hosts.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Host-Guardian-Service",
+    "path": "PowerShell/Host-Guardian-Service",
+    "description": "Three-step process to install and configure Host Guardian Service.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Code-Integrity",
+    "path": "PowerShell/Code-Integrity",
+    "description": "Audit and enforcement configurations for code integrity.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "Group-Policy-Baseline",
+    "path": "PowerShell/Group-Policy-Baseline",
+    "description": "Group Policy Object import and configuration.",
+    "technology": "PowerShell"
+  }
+]
