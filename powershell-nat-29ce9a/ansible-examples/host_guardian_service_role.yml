@@ -1,0 +1,208 @@
+# Example Ansible role for Host Guardian Service configuration
+# This would be placed in roles/host_guardian_service/tasks/main.yml
+
+---
+- name: Get script directory path
+  ansible.windows.win_shell: |
+    $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+    Write-Output $PSScriptRoot
+  register: script_dir
+  changed_when: false
+
+- name: Enable PSRemoting
+  ansible.windows.win_shell: |
+    if (-not (Get-PSSessionConfiguration -Name Microsoft.PowerShell -ErrorAction SilentlyContinue)) {
+      Enable-PSRemoting -Force
+      exit 1  # Changed
+    } else {
+      exit 0  # Not changed
+    }
+  register: psremoting_result
+  changed_when: psremoting_result.rc == 1
+  failed_when: false
+
+- name: Enable WinRM
+  ansible.windows.win_shell: |
+    $WinRMService = Get-Service -Name WinRM
+    if ($WinRMService.Status -ne "Running") {
+      Set-Service -Name WinRM -StartupType Automatic
+      Start-Service -Name WinRM
+      exit 1  # Changed
+    } else {
+      exit 0  # Not changed
+    }
+  register: winrm_result
+  changed_when: winrm_result.rc == 1
+  failed_when: false
+
+- name: Install root certificate for proxy access
+  community.windows.win_certificate_store:
+    path: "{{ root_cert_path | default(script_dir.stdout + '\\RootCert.cer') }}"
+    state: present
+    store_location: LocalMachine
+    store_name: Root
+  when: install_root_cert | default(true)
+
+- name: Install HGS role
+  ansible.windows.win_feature:
+    name: HostGuardianServiceRole
+    state: present
+    include_sub_features: yes
+    include_management_tools: yes
+  register: hgs_install
+
+- name: Install DNS role
+  ansible.windows.win_feature:
+    name: DNS
+    state: present
+    include_management_tools: yes
+  register: dns_install
+
+- name: Reboot if feature installation requires it
+  ansible.windows.win_reboot:
+  when: hgs_install.reboot_required or dns_install.reboot_required
+
+- name: Get current computer name
+  ansible.windows.win_shell: $env:COMPUTERNAME
+  register: current_computer_name
+  changed_when: false
+
+- name: Prompt for computer name if not provided
+  ansible.builtin.pause:
+    prompt: "Enter the new computer name for this HGS server"
+  register: computer_name_prompt
+  when: hgs_computer_name is not defined
+
+- name: Set computer name variable
+  ansible.builtin.set_fact:
+    hgs_computer_name: "{{ hgs_computer_name | default(computer_name_prompt.user_input) }}"
+
+- name: Rename computer if needed
+  ansible.windows.win_hostname:
+    name: "{{ hgs_computer_name }}"
+  register: rename_result
+  when: current_computer_name.stdout | trim != hgs_computer_name
+
+- name: Reboot after rename
+  ansible.windows.win_reboot:
+  when: rename_result.changed | default(false)
+
+- name: Initialize HGS server
+  ansible.windows.win_shell: |
+    # Check if HGS is already initialized
+    try {
+      $HgsServer = Get-HgsServer -ErrorAction Stop
+      if ($HgsServer) {
+        Write-Output "HGS server already initialized"
+        exit 0  # Not changed
+      }
+    } catch {
+      # HGS not initialized, continue
+    }
+    
+    # Initialize HGS server
+    $HgsParams = @{
+      TrustActiveDirectory = $true
+      SigningCertificatePath = "{{ hgs_signing_cert_path }}"
+      SigningCertificatePassword = (ConvertTo-SecureString -String "{{ hgs_signing_cert_password }}" -AsPlainText -Force)
+      EncryptionCertificatePath = "{{ hgs_encryption_cert_path }}"
+      EncryptionCertificatePassword = (ConvertTo-SecureString -String "{{ hgs_encryption_cert_password }}" -AsPlainText -Force)
+    }
+    
+    Initialize-HgsServer @HgsParams
+    exit 1  # Changed
+  register: hgs_init_result
+  changed_when: hgs_init_result.rc == 1
+  failed_when: hgs_init_result.rc > 1
+  when: 
+    - hgs_signing_cert_path is defined
+    - hgs_signing_cert_password is defined
+    - hgs_encryption_cert_path is defined
+    - hgs_encryption_cert_password is defined
+
+- name: Configure HGS attestation
+  ansible.windows.win_shell: |
+    # Check if attestation is already configured
+    $AttestationService = Get-HgsAttestationService
+    if ($AttestationService.Status -eq "Running") {
+      Write-Output "Attestation service already configured"
+      exit 0  # Not changed
+    }
+    
+    # Configure attestation
+    $AttestationParams = @{
+      TrustActiveDirectory = $true
+      CertificateThumbprint = "{{ hgs_attestation_cert_thumbprint }}"
+    }
+    
+    Initialize-HgsAttestation @AttestationParams
+    exit 1  # Changed
+  register: hgs_attestation_result
+  changed_when: hgs_attestation_result.rc == 1
+  failed_when: hgs_attestation_result.rc > 1
+  when: hgs_attestation_cert_thumbprint is defined
+
+- name: Configure HGS key protection
+  ansible.windows.win_shell: |
+    # Check if key protection is already configured
+    $KeyProtectionService = Get-HgsKeyProtectionService
+    if ($KeyProtectionService.Status -eq "Running") {
+      Write-Output "Key protection service already configured"
+      exit 0  # Not changed
+    }
+    
+    # Configure key protection
+    $KeyProtectionParams = @{
+      CertificateThumbprint = "{{ hgs_key_protection_cert_thumbprint }}"
+    }
+    
+    Initialize-HgsKeyProtection @KeyProtectionParams
+    exit 1  # Changed
+  register: hgs_key_protection_result
+  changed_when: hgs_key_protection_result.rc == 1
+  failed_when: hgs_key_protection_result.rc > 1
+  when: hgs_key_protection_cert_thumbprint is defined
+
+- name: Configure HGS attestation policies
+  ansible.windows.win_shell: |
+    # Add TPM attestation
+    Add-HgsAttestationTpmPolicy -Name "{{ item.name }}" -Path "{{ item.path }}"
+  loop: "{{ hgs_tpm_policies | default([]) }}"
+  when: hgs_tpm_policies is defined
+
+- name: Configure HGS CI policies
+  ansible.windows.win_shell: |
+    # Add CI policy
+    Add-HgsAttestationCIPolicy -Name "{{ item.name }}" -Path "{{ item.path }}" -PolicyVersion "{{ item.version | default('1.0') }}"
+  loop: "{{ hgs_ci_policies | default([]) }}"
+  when: hgs_ci_policies is defined
+
+- name: Configure DNS for HGS
+  community.windows.win_dns_record:
+    name: "{{ hgs_dns_name }}"
+    type: A
+    value: "{{ hgs_ip_address }}"
+    zone: "{{ domain_name }}"
+  when: 
+    - hgs_dns_name is defined
+    - hgs_ip_address is defined
+
+- name: Configure firewall rules for HGS
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    localport: "{{ item.ports }}"
+    action: allow
+    direction: in
+    protocol: "{{ item.protocol | default('tcp') }}"
+    profiles: "{{ item.profiles | default(['domain']) }}"
+    state: present
+    enabled: yes
+  loop:
+    - { name: "HGS Attestation", ports: "80" }
+    - { name: "HGS Attestation SSL", ports: "443" }
+    - { name: "HGS Key Protection", ports: "8080" }
+    - { name: "HGS Key Protection SSL", ports: "8443" }
+
+- name: Reboot server to complete HGS configuration
+  ansible.windows.win_reboot:
+  when: hgs_init_result.changed or hgs_attestation_result.changed or hgs_key_protection_result.changed

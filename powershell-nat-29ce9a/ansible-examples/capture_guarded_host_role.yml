@@ -1,0 +1,181 @@
+# Example Ansible role for capturing guarded host information
+# This would be placed in roles/capture_guarded_host/tasks/main.yml
+
+---
+- name: Get computer name
+  ansible.windows.win_shell: $env:COMPUTERNAME
+  register: computer_name
+  changed_when: false
+
+- name: Create directory for TPM information
+  ansible.windows.win_file:
+    path: "{{ tpm_info_path | default('C:\\TPMInfo') }}"
+    state: directory
+
+- name: Create network share directory if specified
+  ansible.windows.win_file:
+    path: "{{ network_share_path }}"
+    state: directory
+  when: network_share_path is defined
+
+- name: Capture TPM EKPub
+  ansible.windows.win_shell: |
+    $computerName = "{{ computer_name.stdout | trim }}"
+    $outputPath = "{{ tpm_info_path | default('C:\\TPMInfo') }}"
+    $outputFile = Join-Path -Path $outputPath -ChildPath "$computerName-EKPub.xml"
+    
+    # Check if file already exists
+    if (Test-Path -Path $outputFile) {
+      Write-Output "TPM EKPub file already exists at $outputFile"
+      exit 0  # Not changed
+    }
+    
+    try {
+      # Get TPM information
+      $tpm = Get-Tpm
+      if (-not $tpm.TpmPresent) {
+        Write-Error "TPM not present on this system"
+        exit 2  # Error
+      }
+      
+      # Get TPM endorsement key and save to file
+      $ekpub = Get-TpmEndorsementKeyInfo
+      $ekpub | Export-Clixml -Path $outputFile -Force
+      
+      Write-Output "TPM EKPub saved to $outputFile"
+      exit 1  # Changed
+    } catch {
+      Write-Error "Error capturing TPM information: $_"
+      exit 2  # Error
+    }
+  register: tpm_capture_result
+  changed_when: tpm_capture_result.rc == 1
+  failed_when: tpm_capture_result.rc > 1
+
+- name: Copy TPM information to network share if specified
+  ansible.windows.win_shell: |
+    $computerName = "{{ computer_name.stdout | trim }}"
+    $sourcePath = "{{ tpm_info_path | default('C:\\TPMInfo') }}"
+    $sourceFile = Join-Path -Path $sourcePath -ChildPath "$computerName-EKPub.xml"
+    $destPath = "{{ network_share_path }}"
+    $destFile = Join-Path -Path $destPath -ChildPath "$computerName-EKPub.xml"
+    
+    # Check if file already exists in destination
+    if (Test-Path -Path $destFile) {
+      $sourceHash = Get-FileHash -Path $sourceFile -Algorithm SHA256
+      $destHash = Get-FileHash -Path $destFile -Algorithm SHA256
+      
+      if ($sourceHash.Hash -eq $destHash.Hash) {
+        Write-Output "File already exists in network share with same hash"
+        exit 0  # Not changed
+      }
+    }
+    
+    # Copy file to network share
+    Copy-Item -Path $sourceFile -Destination $destFile -Force
+    Write-Output "Copied TPM EKPub to network share at $destFile"
+    exit 1  # Changed
+  register: tpm_copy_result
+  changed_when: tpm_copy_result.rc == 1
+  failed_when: tpm_copy_result.rc > 1
+  when: 
+    - network_share_path is defined
+    - tpm_capture_result.rc != 2
+
+- name: Capture TPM baseline (optional)
+  ansible.windows.win_shell: |
+    $computerName = "{{ computer_name.stdout | trim }}"
+    $outputPath = "{{ tpm_info_path | default('C:\\TPMInfo') }}"
+    $outputFile = Join-Path -Path $outputPath -ChildPath "$computerName.tcglog"
+    
+    # Check if file already exists
+    if (Test-Path -Path $outputFile) {
+      Write-Output "TPM baseline file already exists at $outputFile"
+      exit 0  # Not changed
+    }
+    
+    try {
+      # Capture TPM baseline
+      $tpmBaseline = Get-PlatformIdentifier
+      Set-Content -Path $outputFile -Value $tpmBaseline -Encoding Byte
+      
+      Write-Output "TPM baseline saved to $outputFile"
+      exit 1  # Changed
+    } catch {
+      Write-Error "Error capturing TPM baseline: $_"
+      exit 2  # Error
+    }
+  register: tpm_baseline_result
+  changed_when: tpm_baseline_result.rc == 1
+  failed_when: tpm_baseline_result.rc > 1
+  when: capture_tpm_baseline | default(false)
+
+- name: Copy TPM baseline to network share if specified
+  ansible.windows.win_shell: |
+    $computerName = "{{ computer_name.stdout | trim }}"
+    $sourcePath = "{{ tpm_info_path | default('C:\\TPMInfo') }}"
+    $sourceFile = Join-Path -Path $sourcePath -ChildPath "$computerName.tcglog"
+    $destPath = "{{ network_share_path }}"
+    $destFile = Join-Path -Path $destPath -ChildPath "$computerName.tcglog"
+    
+    # Check if source file exists
+    if (-not (Test-Path -Path $sourceFile)) {
+      Write-Output "Source TPM baseline file does not exist"
+      exit 0  # Not changed
+    }
+    
+    # Check if file already exists in destination
+    if (Test-Path -Path $destFile) {
+      $sourceHash = Get-FileHash -Path $sourceFile -Algorithm SHA256
+      $destHash = Get-FileHash -Path $destFile -Algorithm SHA256
+      
+      if ($sourceHash.Hash -eq $destHash.Hash) {
+        Write-Output "File already exists in network share with same hash"
+        exit 0  # Not changed
+      }
+    }
+    
+    # Copy file to network share
+    Copy-Item -Path $sourceFile -Destination $destFile -Force
+    Write-Output "Copied TPM baseline to network share at $destFile"
+    exit 1  # Changed
+  register: tpm_baseline_copy_result
+  changed_when: tpm_baseline_copy_result.rc == 1
+  failed_when: tpm_baseline_copy_result.rc > 1
+  when: 
+    - network_share_path is defined
+    - capture_tpm_baseline | default(false)
+    - tpm_baseline_result.rc != 2
+
+- name: Register server with Host Guardian Service
+  ansible.windows.win_shell: |
+    $computerName = "{{ computer_name.stdout | trim }}"
+    $hgsServer = "{{ hgs_server_name }}"
+    
+    # Check if already registered
+    try {
+      $attestationClient = Get-HgsClientConfiguration
+      if ($attestationClient.AttestationServerUrl -like "*$hgsServer*") {
+        Write-Output "Already registered with HGS server $hgsServer"
+        exit 0  # Not changed
+      }
+    } catch {
+      # Not registered, continue
+    }
+    
+    try {
+      # Register with HGS
+      Set-HgsClientConfiguration -AttestationServerUrl "http://$hgsServer/Attestation" -KeyProtectionServerUrl "http://$hgsServer/KeyProtection"
+      
+      Write-Output "Registered with HGS server $hgsServer"
+      exit 1  # Changed
+    } catch {
+      Write-Error "Error registering with HGS: $_"
+      exit 2  # Error
+    }
+  register: hgs_register_result
+  changed_when: hgs_register_result.rc == 1
+  failed_when: hgs_register_result.rc > 1
+  when: 
+    - register_with_hgs | default(false)
+    - hgs_server_name is defined

@@ -1,0 +1,105 @@
+# Example group variables for HGS deployment
+# This would be placed in inventory/group_vars/all.yml
+
+---
+# Domain configuration
+domain_name: example.com
+domain_netbios_name: EXAMPLE
+domain_admin_user: Administrator
+domain_admin_password: "{{ vault_domain_admin_password }}"
+
+# Network configuration
+primary_dns_forwarder: 8.8.8.8
+secondary_dns_forwarder: 8.8.4.4
+
+# Common paths
+admin_path: C:\Admin
+tpm_info_path: C:\TPMInfo
+network_share_path: \\dc01\TPMInfo
+
+# Security settings
+enable_bitlocker: true
+configure_winrm: true
+
+# HGS configuration
+hgs_server_name: hgs01.example.com
+hgs_signing_cert_path: C:\Certs\HGS-Signing.pfx
+hgs_encryption_cert_path: C:\Certs\HGS-Encryption.pfx
+hgs_attestation_cert_thumbprint: "{{ vault_hgs_attestation_cert_thumbprint }}"
+hgs_key_protection_cert_thumbprint: "{{ vault_hgs_key_protection_cert_thumbprint }}"
+
+# Organizational Units
+organizational_units:
+  - name: Admin
+    path: DC=example,DC=com
+    protected: true
+    description: Administrative accounts
+  - name: Service Accounts
+    path: DC=example,DC=com
+    protected: true
+    description: Service accounts
+  - name: Servers
+    path: DC=example,DC=com
+    protected: true
+    description: Server objects
+  - name: Domain Controllers
+    path: OU=Servers,DC=example,DC=com
+    protected: true
+    description: Domain Controllers
+  - name: Member Servers
+    path: OU=Servers,DC=example,DC=com
+    protected: true
+    description: Member Servers
+  - name: HGS Servers
+    path: OU=Servers,DC=example,DC=com
+    protected: true
+    description: Host Guardian Service servers
+  - name: Guarded Hosts
+    path: OU=Servers,DC=example,DC=com
+    protected: true
+    description: Guarded host servers
+
+# Domain groups
+domain_groups:
+  - name: HGS Administrators
+    scope: global
+    category: security
+    path: OU=Admin,DC=example,DC=com
+    description: Host Guardian Service administrators
+  - name: Guarded Host Administrators
+    scope: global
+    category: security
+    path: OU=Admin,DC=example,DC=com
+    description: Guarded host administrators
+
+# GPO links
+gpo_links:
+  - gpo_name: Default Domain Policy
+    target_ou: DC=example,DC=com
+    enabled: true
+    enforced: true
+  - gpo_name: Default Domain Controllers Policy
+    target_ou: OU=Domain Controllers,OU=Servers,DC=example,DC=com
+    enabled: true
+    enforced: true
+  - gpo_name: HGS Server Policy
+    target_ou: OU=HGS Servers,OU=Servers,DC=example,DC=com
+    enabled: true
+    enforced: false
+  - gpo_name: Guarded Host Policy
+    target_ou: OU=Guarded Hosts,OU=Servers,DC=example,DC=com
+    enabled: true
+    enforced: false
+
+# HGS TPM policies
+hgs_tpm_policies:
+  - name: TrustedTPM
+    path: C:\TPMPolicies\TrustedTPM.xml
+  - name: TrustedPlatform
+    path: C:\TPMPolicies\TrustedPlatform.xml
+
+# HGS CI policies
+hgs_ci_policies:
+  - name: AllowMicrosoft
+    path: C:\CIPolicies\AllowMicrosoft.xml
+    version: 1.0

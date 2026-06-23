@@ -1,0 +1,44 @@
+[
+  {
+    "name": "common",
+    "path": "roles/common",
+    "description": "Common configurations for all servers including base OS settings.",
+    "technology": "Ansible"
+  },
+  {
+    "name": "active_directory",
+    "path": "roles/active_directory",
+    "description": "AD domain controller configuration including domain setup, OU structure, and Group Policy management.",
+    "technology": "Ansible"
+  },
+  {
+    "name": "member_server",
+    "path": "roles/member_server",
+    "description": "Member server configuration including domain joining and server-specific settings.",
+    "technology": "Ansible"
+  },
+  {
+    "name": "dns_server",
+    "path": "roles/dns_server",
+    "description": "DNS server configuration and management.",
+    "technology": "Ansible"
+  },
+  {
+    "name": "host_guardian_service",
+    "path": "roles/host_guardian_service",
+    "description": "HGS configuration for enhanced security features and certificate management.",
+    "technology": "Ansible"
+  },
+  {
+    "name": "code_integrity",
+    "path": "roles/code_integrity",
+    "description": "Manages code integrity policies deployment and configuration.",
+    "technology": "Ansible"
+  },
+  {
+    "name": "special_use_cases",
+    "path": "roles/special_use_cases",
+    "description": "Special configurations including Office 365 trusted sites and strong crypto settings.",
+    "technology": "Ansible"
+  }
+]

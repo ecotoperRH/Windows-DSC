@@ -1,0 +1,179 @@
+# Example Ansible role for Member Server configuration
+# This would be placed in roles/member_server/tasks/main.yml
+
+---
+- name: Ensure BitLocker feature is installed
+  ansible.windows.win_feature:
+    name: BitLocker
+    state: present
+    include_sub_features: yes
+    include_management_tools: yes
+  register: feature_install
+
+- name: Reboot if feature installation requires it
+  ansible.windows.win_reboot:
+  when: feature_install.reboot_required
+
+- name: Set UAC to AlwaysNotify
+  community.windows.win_security_policy:
+    name: EnableLUA
+    policy_value: 1
+
+- name: Set UAC ConsentPromptBehaviorAdmin to prompt for credentials
+  ansible.windows.win_registry:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: ConsentPromptBehaviorAdmin
+    data: 1
+    type: dword
+
+- name: Set UAC ConsentPromptBehaviorUser to prompt for credentials
+  ansible.windows.win_registry:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: ConsentPromptBehaviorUser
+    data: 1
+    type: dword
+
+- name: Set timezone to Pacific Standard Time
+  community.windows.win_timezone:
+    timezone: "Pacific Standard Time"
+
+- name: Set PowerShell execution policy to RemoteSigned
+  ansible.windows.win_shell: Set-ExecutionPolicy RemoteSigned -Force
+  changed_when: false
+
+- name: Create admin folder if it doesn't exist
+  ansible.windows.win_file:
+    path: "{{ admin_path }}"
+    state: directory
+
+- name: Remove API registration folder if it exists
+  ansible.windows.win_file:
+    path: "{{ api_folder_path }}"
+    state: absent
+  when: api_folder_path is defined
+
+- name: Check if computer is domain joined
+  ansible.windows.win_shell: |
+    $computerSystem = Get-WmiObject -Class Win32_ComputerSystem
+    if ($computerSystem.PartOfDomain) {
+      Write-Output "Domain joined: $($computerSystem.Domain)"
+      exit 0
+    } else {
+      Write-Output "Not domain joined"
+      exit 1
+    }
+  register: domain_check
+  changed_when: false
+  failed_when: false
+
+- name: Join computer to domain
+  ansible.windows.win_domain_membership:
+    dns_domain_name: "{{ domain_name }}"
+    hostname: "{{ inventory_hostname_short }}"
+    username: "{{ domain_join_user }}"
+    password: "{{ domain_join_password }}"
+    state: domain
+  register: domain_join
+  when: domain_check.rc != 0
+
+- name: Reboot after domain join
+  ansible.windows.win_reboot:
+  when: domain_join.changed | default(false)
+
+- name: Configure Windows Firewall for Member Servers
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    localport: "{{ item.ports }}"
+    action: allow
+    direction: in
+    protocol: "{{ item.protocol | default('tcp') }}"
+    profiles: "{{ item.profiles | default(['domain']) }}"
+    state: present
+    enabled: yes
+  loop:
+    - { name: "RDP", ports: "3389" }
+    - { name: "WinRM HTTP", ports: "5985" }
+    - { name: "WinRM HTTPS", ports: "5986" }
+
+- name: Configure Windows Update settings
+  ansible.windows.win_registry:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+    name: "{{ item.name }}"
+    data: "{{ item.data }}"
+    type: "{{ item.type | default('dword') }}"
+  loop:
+    - { name: "NoAutoUpdate", data: 0 }
+    - { name: "AUOptions", data: 4 }  # Auto download and schedule installation
+    - { name: "ScheduledInstallDay", data: 0 }  # Every day
+    - { name: "ScheduledInstallTime", data: 3 }  # 3 AM
+
+- name: Configure Windows Event Log settings
+  community.windows.win_eventlog:
+    name: "{{ item.name }}"
+    maximum_size_in_bytes: "{{ item.size }}"
+    retention: "{{ item.retention | default('disabled') }}"
+  loop:
+    - { name: "Application", size: 32768000 }
+    - { name: "Security", size: 196608000 }
+    - { name: "System", size: 32768000 }
+    - { name: "PowerShell", size: 32768000 }
+
+- name: Configure Windows Remote Management (WinRM)
+  ansible.windows.win_shell: |
+    # Configure WinRM HTTPS
+    $Cert = New-SelfSignedCertificate -CertstoreLocation Cert:\LocalMachine\My -DnsName $env:COMPUTERNAME
+    $Thumbprint = $Cert.Thumbprint
+    
+    # Configure WinRM to use the certificate
+    winrm create winrm/config/Listener?Address=*+Transport=HTTPS "@{Hostname=`"$($env:COMPUTERNAME)`"; CertificateThumbprint=`"$Thumbprint`"}"
+    
+    # Enable Basic authentication (only for domain environments with proper security)
+    winrm set winrm/config/service/auth '@{Basic="true"}'
+    
+    # Increase memory limits
+    winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="1024"}'
+    
+    # Allow unencrypted traffic (only if needed)
+    # winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+    
+    # Configure firewall rule for WinRM HTTPS
+    netsh advfirewall firewall add rule name="WinRM HTTPS" dir=in localport=5986 protocol=TCP action=allow
+  changed_when: false
+  when: configure_winrm | default(true)
+
+- name: Configure BitLocker
+  ansible.windows.win_shell: |
+    # Check if BitLocker is already enabled
+    $BitLockerVolume = Get-BitLockerVolume -MountPoint "C:"
+    if ($BitLockerVolume.ProtectionStatus -ne "On") {
+      # Enable BitLocker with TPM
+      Enable-BitLocker -MountPoint "C:" -EncryptionMethod XtsAes256 -UsedSpaceOnly -TpmProtector
+      # Add recovery password
+      Add-BitLockerKeyProtector -MountPoint "C:" -RecoveryPasswordProtector
+      # Get recovery password
+      $RecoveryPassword = (Get-BitLockerVolume -MountPoint "C:").KeyProtector | Where-Object { $_.KeyProtectorType -eq "RecoveryPassword" }
+      Write-Output "BitLocker enabled with recovery password: $($RecoveryPassword.RecoveryPassword)"
+      exit 1  # Changed
+    } else {
+      Write-Output "BitLocker already enabled"
+      exit 0  # Not changed
+    }
+  register: bitlocker_result
+  changed_when: bitlocker_result.rc == 1
+  failed_when: false
+  when: enable_bitlocker | default(true)
+
+- name: Save BitLocker recovery information
+  ansible.windows.win_shell: |
+    $RecoveryPassword = (Get-BitLockerVolume -MountPoint "C:").KeyProtector | Where-Object { $_.KeyProtectorType -eq "RecoveryPassword" }
+    if ($RecoveryPassword) {
+      $RecoveryInfo = @{
+        ComputerName = $env:COMPUTERNAME
+        RecoveryPassword = $RecoveryPassword.RecoveryPassword
+        KeyProtectorId = $RecoveryPassword.KeyProtectorId
+        Date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+      }
+      $RecoveryInfo | ConvertTo-Json | Out-File -FilePath "{{ admin_path }}\BitLocker_Recovery_$env:COMPUTERNAME.json"
+    }
+  changed_when: false
+  when: bitlocker_result.changed | default(false)

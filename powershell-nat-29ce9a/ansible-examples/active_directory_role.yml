@@ -1,0 +1,146 @@
+# Example Ansible role for Active Directory configuration
+# This would be placed in roles/active_directory/tasks/main.yml
+
+---
+- name: Install Active Directory Domain Services
+  ansible.windows.win_feature:
+    name:
+      - AD-Domain-Services
+      - DNS
+      - RSAT-AD-PowerShell
+      - RSAT-ADDS
+      - RSAT-DNS-Server
+    state: present
+    include_sub_features: yes
+    include_management_tools: yes
+  register: ad_install
+
+- name: Reboot if AD installation requires it
+  ansible.windows.win_reboot:
+  when: ad_install.reboot_required
+
+- name: Check if domain exists
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = "Stop"
+    try {
+      $domain = Get-ADDomain -Identity "{{ domain_name }}"
+      if ($domain) { return $true }
+    } catch {
+      return $false
+    }
+  register: domain_exists
+  changed_when: false
+  failed_when: false
+
+- name: Create new forest and domain
+  community.windows.win_domain:
+    dns_domain_name: "{{ domain_name }}"
+    safe_mode_password: "{{ safe_mode_password }}"
+  register: ad_setup
+  when: domain_exists.stdout | trim | lower == "false"
+
+- name: Reboot after domain creation
+  ansible.windows.win_reboot:
+  when: ad_setup.changed | default(false)
+
+- name: Wait for Active Directory Web Services
+  ansible.windows.win_shell: |
+    $count = 0
+    $max = 10
+    while (($count -lt $max) -and (-not (Get-ADDomain))) {
+      Start-Sleep -Seconds 30
+      $count++
+    }
+    if ($count -eq $max) { exit 1 }
+    exit 0
+  register: ad_ready
+  until: ad_ready.rc == 0
+  retries: 10
+  delay: 30
+  when: ad_setup.changed | default(false)
+
+- name: Configure DNS forwarders
+  community.windows.win_dns_forwarder:
+    forwarders:
+      - "{{ primary_dns_forwarder }}"
+      - "{{ secondary_dns_forwarder }}"
+  when: configure_dns_forwarders | default(true)
+
+- name: Create base Organizational Units
+  community.windows.win_domain_ou:
+    name: "{{ item.name }}"
+    path: "{{ item.path | default('') }}"
+    state: present
+    protected: "{{ item.protected | default(true) }}"
+    description: "{{ item.description | default('') }}"
+  loop: "{{ organizational_units }}"
+
+- name: Create domain groups
+  community.windows.win_domain_group:
+    name: "{{ item.name }}"
+    scope: "{{ item.scope | default('global') }}"
+    category: "{{ item.category | default('security') }}"
+    path: "{{ item.path | default('') }}"
+    description: "{{ item.description | default('') }}"
+    state: present
+  loop: "{{ domain_groups }}"
+
+- name: Configure domain controller security settings
+  community.windows.win_security_policy:
+    section: System Access
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  loop:
+    - { key: "MinimumPasswordAge", value: 1 }
+    - { key: "MaximumPasswordAge", value: 42 }
+    - { key: "MinimumPasswordLength", value: 14 }
+    - { key: "PasswordComplexity", value: 1 }
+    - { key: "PasswordHistorySize", value: 24 }
+    - { key: "LockoutBadCount", value: 5 }
+    - { key: "ResetLockoutCount", value: 30 }
+    - { key: "LockoutDuration", value: 30 }
+
+- name: Configure Kerberos policy
+  community.windows.win_security_policy:
+    section: Kerberos Policy
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  loop:
+    - { key: "MaxTicketAge", value: 10 }
+    - { key: "MaxRenewAge", value: 7 }
+    - { key: "MaxServiceAge", value: 600 }
+    - { key: "MaxClockSkew", value: 5 }
+    - { key: "TicketValidateClient", value: 1 }
+
+- name: Configure audit policy
+  ansible.windows.win_audit_policy_system:
+    category: "{{ item.category }}"
+    audit_type: "{{ item.audit_type }}"
+  loop:
+    - { category: "Account Logon", audit_type: "success, failure" }
+    - { category: "Account Management", audit_type: "success, failure" }
+    - { category: "Logon/Logoff", audit_type: "success, failure" }
+    - { category: "Policy Change", audit_type: "success, failure" }
+    - { category: "Privilege Use", audit_type: "success, failure" }
+    - { category: "System", audit_type: "success, failure" }
+
+- name: Configure Windows Firewall for Domain Controllers
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    localport: "{{ item.ports }}"
+    action: allow
+    direction: in
+    protocol: "{{ item.protocol | default('tcp') }}"
+    profiles: "{{ item.profiles | default(['domain']) }}"
+    state: present
+    enabled: yes
+  loop:
+    - { name: "Active Directory Web Services", ports: "9389" }
+    - { name: "DNS", ports: "53", protocol: "tcp" }
+    - { name: "DNS UDP", ports: "53", protocol: "udp" }
+    - { name: "Kerberos", ports: "88", protocol: "tcp" }
+    - { name: "Kerberos UDP", ports: "88", protocol: "udp" }
+    - { name: "LDAP", ports: "389" }
+    - { name: "LDAP SSL", ports: "636" }
+    - { name: "RPC", ports: "135" }
+    - { name: "SMB", ports: "445" }

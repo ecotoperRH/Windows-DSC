@@ -1,0 +1,51 @@
+# Example main playbook for HGS deployment
+# This would be placed in playbooks/site.yml
+
+---
+- name: Configure Active Directory Domain Controllers
+  hosts: domain_controllers
+  gather_facts: true
+  roles:
+    - common
+    - active_directory
+    - dns_server
+  tags:
+    - domain_controllers
+
+- name: Configure Host Guardian Service servers
+  hosts: hgs_servers
+  gather_facts: true
+  roles:
+    - common
+    - member_server
+    - host_guardian_service
+  tags:
+    - hgs_servers
+
+- name: Configure Guarded Hosts
+  hosts: guarded_hosts
+  gather_facts: true
+  roles:
+    - common
+    - member_server
+    - code_integrity
+    - capture_guarded_host
+  tags:
+    - guarded_hosts
+
+- name: Configure Member Servers
+  hosts: member_servers
+  gather_facts: true
+  roles:
+    - common
+    - member_server
+  tags:
+    - member_servers
+
+- name: Configure Office 365 Trusted Sites
+  hosts: all
+  gather_facts: true
+  roles:
+    - office365_trusted_sites
+  tags:
+    - trusted_sites

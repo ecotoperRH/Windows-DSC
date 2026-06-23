@@ -1,0 +1,43 @@
+# Example Ansible inventory for HGS deployment
+# This would be placed in inventory/hosts.yml
+
+---
+all:
+  children:
+    domain_controllers:
+      hosts:
+        dc01.example.com:
+          ansible_host: 192.168.1.10
+        dc02.example.com:
+          ansible_host: 192.168.1.11
+    
+    hgs_servers:
+      hosts:
+        hgs01.example.com:
+          ansible_host: 192.168.1.20
+          hgs_computer_name: HGS01
+        hgs02.example.com:
+          ansible_host: 192.168.1.21
+          hgs_computer_name: HGS02
+    
+    guarded_hosts:
+      hosts:
+        host01.example.com:
+          ansible_host: 192.168.1.30
+        host02.example.com:
+          ansible_host: 192.168.1.31
+        host03.example.com:
+          ansible_host: 192.168.1.32
+    
+    member_servers:
+      hosts:
+        srv01.example.com:
+          ansible_host: 192.168.1.40
+        srv02.example.com:
+          ansible_host: 192.168.1.41
+  
+  vars:
+    ansible_user: administrator
+    ansible_connection: winrm
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm

@@ -1,0 +1,210 @@
+# Example Ansible role for importing GPOs in bulk
+# This would be placed in roles/import_gpo_bulk/tasks/main.yml
+
+---
+- name: Ensure required PowerShell modules are installed
+  ansible.windows.win_shell: |
+    $modules = @('ActiveDirectory', 'GroupPolicy')
+    $missingModules = @()
+    
+    foreach ($module in $modules) {
+      if (-not (Get-Module -ListAvailable -Name $module)) {
+        $missingModules += $module
+      }
+    }
+    
+    if ($missingModules.Count -gt 0) {
+      Write-Output "Missing required modules: $($missingModules -join ', ')"
+      exit 1  # Error
+    } else {
+      Write-Output "All required modules are installed"
+      exit 0  # Success
+    }
+  register: module_check
+  changed_when: false
+  failed_when: module_check.rc != 0
+
+- name: Create temporary directory for GPO backups
+  ansible.windows.win_file:
+    path: "{{ gpo_temp_dir | default('C:\\Temp\\GPOImport') }}"
+    state: directory
+
+- name: Copy GPO backups to target server
+  ansible.windows.win_copy:
+    src: "{{ gpo_source_dir }}/"
+    dest: "{{ gpo_temp_dir | default('C:\\Temp\\GPOImport') }}"
+  when: gpo_source_dir is defined
+
+- name: Get list of GPO backup folders
+  ansible.windows.win_find:
+    paths: "{{ gpo_temp_dir | default('C:\\Temp\\GPOImport') }}"
+    file_type: directory
+  register: gpo_folders
+  when: not use_file_browser | default(false)
+
+- name: Import GPOs from backup folders
+  ansible.windows.win_shell: |
+    $gpoFolder = "{{ item.path }}"
+    $gpoName = $null
+    
+    # Get GPO name from backup XML
+    $xmlPath = Join-Path -Path $gpoFolder -ChildPath "Backup.xml"
+    if (Test-Path -Path $xmlPath) {
+      [xml]$xml = Get-Content -Path $xmlPath
+      $gpoName = $xml.BackupInst.GPODisplayName.'#text'
+    } else {
+      Write-Error "Backup.xml not found in $gpoFolder"
+      exit 2  # Error
+    }
+    
+    # Check if GPO already exists
+    $existingGPO = Get-GPO -Name $gpoName -ErrorAction SilentlyContinue
+    if ($existingGPO) {
+      Write-Output "GPO '$gpoName' already exists. Skipping import."
+      exit 0  # Not changed
+    }
+    
+    # Import GPO
+    try {
+      Import-GPO -BackupId $xml.BackupInst.ID.'#text' -Path (Split-Path -Parent $gpoFolder) -TargetName $gpoName -CreateIfNeeded
+      Write-Output "Successfully imported GPO '$gpoName'"
+      exit 1  # Changed
+    } catch {
+      Write-Error "Failed to import GPO '$gpoName': $_"
+      exit 2  # Error
+    }
+  register: gpo_import_result
+  changed_when: gpo_import_result.rc == 1
+  failed_when: gpo_import_result.rc > 1
+  loop: "{{ gpo_folders.files }}"
+  when: not use_file_browser | default(false)
+
+- name: Import GPOs using file browser (interactive)
+  ansible.windows.win_shell: |
+    Add-Type -AssemblyName System.Windows.Forms
+    
+    # Create folder browser dialog
+    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowser.Description = "Select folder containing GPO backups"
+    $folderBrowser.RootFolder = [System.Environment+SpecialFolder]::MyComputer
+    
+    # Show dialog and get selected path
+    if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+      $selectedPath = $folderBrowser.SelectedPath
+      Write-Output "Selected path: $selectedPath"
+      
+      # Get all GPO backup folders
+      $gpoFolders = Get-ChildItem -Path $selectedPath -Directory
+      $importedCount = 0
+      
+      foreach ($folder in $gpoFolders) {
+        $xmlPath = Join-Path -Path $folder.FullName -ChildPath "Backup.xml"
+        if (Test-Path -Path $xmlPath) {
+          [xml]$xml = Get-Content -Path $xmlPath
+          $gpoName = $xml.BackupInst.GPODisplayName.'#text'
+          
+          # Check if GPO already exists
+          $existingGPO = Get-GPO -Name $gpoName -ErrorAction SilentlyContinue
+          if ($existingGPO) {
+            Write-Output "GPO '$gpoName' already exists. Skipping import."
+            continue
+          }
+          
+          # Import GPO
+          try {
+            Import-GPO -BackupId $xml.BackupInst.ID.'#text' -Path $selectedPath -TargetName $gpoName -CreateIfNeeded
+            Write-Output "Successfully imported GPO '$gpoName'"
+            $importedCount++
+          } catch {
+            Write-Error "Failed to import GPO '$gpoName': $_"
+          }
+        } else {
+          Write-Warning "Backup.xml not found in $($folder.FullName)"
+        }
+      }
+      
+      if ($importedCount -gt 0) {
+        Write-Output "Imported $importedCount GPOs"
+        exit 1  # Changed
+      } else {
+        Write-Output "No GPOs were imported"
+        exit 0  # Not changed
+      }
+    } else {
+      Write-Output "Operation cancelled by user"
+      exit 0  # Not changed
+    }
+  register: interactive_import_result
+  changed_when: interactive_import_result.rc == 1
+  failed_when: interactive_import_result.rc > 1
+  when: use_file_browser | default(false)
+
+- name: Link imported GPOs to OUs
+  ansible.windows.win_shell: |
+    $gpoName = "{{ item.gpo_name }}"
+    $targetOU = "{{ item.target_ou }}"
+    $enabled = ${{ item.enabled | default(true) | lower }}
+    $enforced = ${{ item.enforced | default(false) | lower }}
+    
+    # Check if GPO exists
+    try {
+      $gpo = Get-GPO -Name $gpoName -ErrorAction Stop
+    } catch {
+      Write-Error "GPO '$gpoName' not found"
+      exit 2  # Error
+    }
+    
+    # Check if OU exists
+    try {
+      $ou = Get-ADOrganizationalUnit -Identity $targetOU -ErrorAction Stop
+    } catch {
+      Write-Error "OU '$targetOU' not found"
+      exit 2  # Error
+    }
+    
+    # Check if GPO is already linked to the OU
+    $links = (Get-GPInheritance -Target $targetOU).GpoLinks | Where-Object { $_.DisplayName -eq $gpoName }
+    if ($links) {
+      # Update link if needed
+      $linkChanged = $false
+      
+      if ($links.Enabled -ne $enabled) {
+        Set-GPLink -Name $gpoName -Target $targetOU -LinkEnabled $enabled
+        $linkChanged = $true
+      }
+      
+      if ($links.Enforced -ne $enforced) {
+        if ($enforced) {
+          Set-GPLink -Name $gpoName -Target $targetOU -Enforced Yes
+        } else {
+          Set-GPLink -Name $gpoName -Target $targetOU -Enforced No
+        }
+        $linkChanged = $true
+      }
+      
+      if ($linkChanged) {
+        Write-Output "Updated GPO link for '$gpoName' to OU '$targetOU'"
+        exit 1  # Changed
+      } else {
+        Write-Output "GPO '$gpoName' already linked to OU '$targetOU' with the same settings"
+        exit 0  # Not changed
+      }
+    } else {
+      # Create new link
+      New-GPLink -Name $gpoName -Target $targetOU -LinkEnabled $enabled -Enforced $enforced
+      Write-Output "Linked GPO '$gpoName' to OU '$targetOU'"
+      exit 1  # Changed
+    }
+  register: gpo_link_result
+  changed_when: gpo_link_result.rc == 1
+  failed_when: gpo_link_result.rc > 1
+  loop: "{{ gpo_links | default([]) }}"
+  when: gpo_links is defined
+
+- name: Clean up temporary directory
+  ansible.windows.win_file:
+    path: "{{ gpo_temp_dir | default('C:\\Temp\\GPOImport') }}"
+    state: absent
+  when: 
+    - gpo_temp_dir is defined
+    - cleanup_temp | default(true)

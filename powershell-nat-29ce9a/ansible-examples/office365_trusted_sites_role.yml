@@ -1,0 +1,142 @@
+# Example Ansible role for configuring Office 365 trusted sites
+# This would be placed in roles/office365_trusted_sites/tasks/main.yml
+
+---
+- name: Copy Office 365 trusted sites XML file
+  ansible.windows.win_copy:
+    src: files/Office365-TrustedSites.xml
+    dest: "{{ trusted_sites_xml_path | default('C:\\Temp\\Office365-TrustedSites.xml') }}"
+  register: xml_copy
+
+- name: Read trusted sites from XML file
+  ansible.windows.win_shell: |
+    [xml]$xml = Get-Content -Path "{{ trusted_sites_xml_path | default('C:\\Temp\\Office365-TrustedSites.xml') }}"
+    $sites = $xml.trusted.site | ForEach-Object { $_.InnerText }
+    $sites -join "`n"
+  register: trusted_sites
+  changed_when: false
+
+- name: Create registry keys for Internet Explorer trusted sites
+  ansible.windows.win_regedit:
+    path: "{{ item }}"
+    state: present
+  loop:
+    - HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains
+    - HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\EscDomains
+
+- name: Configure trusted sites in Internet Explorer (HTTP)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\{{ item | regex_replace('^\\*\\.', '') }}"
+    name: http
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: item | regex_search('^\*\.')
+
+- name: Configure trusted sites in Internet Explorer (HTTPS)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\{{ item | regex_replace('^\\*\\.', '') }}"
+    name: https
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: item | regex_search('^\*\.')
+
+- name: Configure specific trusted sites in Internet Explorer (HTTP)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\{{ item | regex_replace('\\..*$', '') }}\\{{ item | regex_replace('^[^\\.]*\\.', '') }}"
+    name: http
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: not (item | regex_search('^\*\.'))
+
+- name: Configure specific trusted sites in Internet Explorer (HTTPS)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\{{ item | regex_replace('\\..*$', '') }}\\{{ item | regex_replace('^[^\\.]*\\.', '') }}"
+    name: https
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: not (item | regex_search('^\*\.'))
+
+- name: Configure ESC trusted sites in Internet Explorer (HTTP)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\EscDomains\\{{ item | regex_replace('^\\*\\.', '') }}"
+    name: http
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: item | regex_search('^\*\.')
+
+- name: Configure ESC trusted sites in Internet Explorer (HTTPS)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\EscDomains\\{{ item | regex_replace('^\\*\\.', '') }}"
+    name: https
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: item | regex_search('^\*\.')
+
+- name: Configure specific ESC trusted sites in Internet Explorer (HTTP)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\EscDomains\\{{ item | regex_replace('\\..*$', '') }}\\{{ item | regex_replace('^[^\\.]*\\.', '') }}"
+    name: http
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: not (item | regex_search('^\*\.'))
+
+- name: Configure specific ESC trusted sites in Internet Explorer (HTTPS)
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\EscDomains\\{{ item | regex_replace('\\..*$', '') }}\\{{ item | regex_replace('^[^\\.]*\\.', '') }}"
+    name: https
+    data: 2
+    type: dword
+    state: present
+  loop: "{{ trusted_sites.stdout_lines }}"
+  when: not (item | regex_search('^\*\.'))
+
+- name: Configure Internet Explorer security settings
+  ansible.windows.win_regedit:
+    path: "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2"
+    name: "{{ item.name }}"
+    data: "{{ item.value }}"
+    type: dword
+    state: present
+  loop:
+    - { name: "1001", value: 0 }  # Download signed ActiveX controls
+    - { name: "1004", value: 0 }  # Download unsigned ActiveX controls
+    - { name: "1200", value: 0 }  # Run ActiveX controls and plugins
+    - { name: "1201", value: 0 }  # Initialize and script ActiveX controls not marked as safe
+    - { name: "1206", value: 0 }  # Allow scripting of Internet Explorer Web browser control
+    - { name: "1207", value: 0 }  # Reserved
+    - { name: "1208", value: 0 }  # Allow previously unused ActiveX controls to run without prompt
+    - { name: "1209", value: 0 }  # Allow Scriptlets
+    - { name: "120A", value: 0 }  # Override Per-Site (domain-based) ActiveX restrictions
+    - { name: "120B", value: 0 }  # Override Per-Site (domain-based) ActiveX restrictions
+    - { name: "1400", value: 0 }  # Active scripting
+    - { name: "1402", value: 0 }  # Scripting of Java applets
+    - { name: "1405", value: 0 }  # Script ActiveX controls marked as safe for scripting
+    - { name: "1607", value: 0 }  # Navigate sub-frames across different domains
+    - { name: "1609", value: 0 }  # Allow websites to open windows without address or status bars
+    - { name: "1809", value: 0 }  # Use Pop-up Blocker
+    - { name: "1A00", value: 0 }  # Allow user data persistence
+    - { name: "1A02", value: 0 }  # Allow persistent cookies that are stored on your computer
+    - { name: "1A03", value: 0 }  # Allow per-session cookies (not stored)
+    - { name: "1A05", value: 0 }  # Allow 3rd party persistent cookies
+    - { name: "1A06", value: 0 }  # Allow 3rd party session cookies
+    - { name: "1C00", value: 0 }  # Java permissions
+
+- name: Clean up temporary files
+  ansible.windows.win_file:
+    path: "{{ trusted_sites_xml_path | default('C:\\Temp\\Office365-TrustedSites.xml') }}"
+    state: absent
+  when: cleanup_temp | default(true)
