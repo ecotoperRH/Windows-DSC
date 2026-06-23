@@ -1,0 +1,14 @@
+---
+- name: Ensure Code Integrity directory exists
+  ansible.builtin.file:
+    path: "{{ ci_base_path }}"
+    state: directory
+    mode: "0755"
+- name: Include audit mode deployment tasks
+  ansible.builtin.include_tasks:
+    file: deploy_audit.yml
+  when: not enforce_mode
+- name: Include enforcement mode deployment tasks
+  ansible.builtin.include_tasks:
+    file: deploy_enforce.yml
+  when: enforce_mode

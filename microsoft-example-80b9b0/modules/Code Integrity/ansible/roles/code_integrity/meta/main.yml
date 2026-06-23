@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: Ansible Team
+  description: Windows Code Integrity Policy Management
+  company: Example Corp
+  license: MIT
+  min_ansible_version: 2.1
+  platforms:
+    - name: Windows
+      versions:
+        - 2019
+        - 2022
+  galaxy_tags:
+    - windows
+    - security
+    - code_integrity
+    - policy
+dependencies: []

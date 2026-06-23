@@ -1,0 +1,28 @@
+---
+- name: Copy Code Integrity audit policy file
+  ansible.builtin.copy:
+    src: Audit/{{ audit_policy_file }}
+    dest: "{{ ci_base_path }}\\{{ audit_policy_file }}"
+  register: ci_audit_policy_copy
+- name: Check if audit policy marker exists
+  ansible.builtin.stat:
+    path: "{{ ci_base_path }}\\audit_policy_applied.marker"
+  register: audit_marker_check
+- name: Apply Code Integrity audit policy
+  ansible.builtin.shell: '$policyPath = "{{ ci_base_path }}\\{{ audit_policy_file }}" $currentPolicy = Get-CiPolicy
+
+    # Check if policy is already applied if ($currentPolicy -and $currentPolicy.PolicyId -eq (([xml](Get-Content $policyPath)).SiPolicy.PolicyID)) { Write-Output
+    "Audit policy already applied"
+
+    exit 0 }
+
+    try { # Apply the policy $result = CiTool -f -json $policyPath Write-Output "Audit policy applied successfully" exit 0 } catch { Write-Error "Failed to apply
+    audit policy: $_" exit 1 } '
+  register: ci_audit_policy_apply
+  when: ci_audit_policy_copy.changed or not audit_marker_check.stat.exists
+  notify: restart windows
+- name: Create audit policy applied marker
+  ansible.builtin.file:
+    path: "{{ ci_base_path }}\\audit_policy_applied.marker"
+    state: touch
+  when: ci_audit_policy_apply is defined and ci_audit_policy_apply.rc is defined and ci_audit_policy_apply.rc == 0

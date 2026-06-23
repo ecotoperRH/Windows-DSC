@@ -1,0 +1,28 @@
+---
+- name: Copy Code Integrity enforce policy file
+  ansible.builtin.copy:
+    src: Enforce/{{ enforce_policy_file }}
+    dest: "{{ ci_base_path }}\\{{ enforce_policy_file }}"
+  register: ci_enforce_policy_copy
+- name: Check if enforce policy marker exists
+  ansible.builtin.stat:
+    path: "{{ ci_base_path }}\\enforce_policy_applied.marker"
+  register: enforce_marker_check
+- name: Apply Code Integrity enforce policy
+  ansible.builtin.shell: '$policyPath = "{{ ci_base_path }}\\{{ enforce_policy_file }}" $currentPolicy = Get-CiPolicy
+
+    # Check if policy is already applied if ($currentPolicy -and $currentPolicy.PolicyId -eq (([xml](Get-Content $policyPath)).SiPolicy.PolicyID)) { Write-Output
+    "Enforce policy already applied"
+
+    exit 0 }
+
+    try { # Apply the policy $result = CiTool -f -json $policyPath Write-Output "Enforce policy applied successfully" exit 0 } catch { Write-Error "Failed to apply
+    enforce policy: $_" exit 1 } '
+  register: ci_enforce_policy_apply
+  when: ci_enforce_policy_copy.changed or not enforce_marker_check.stat.exists
+  notify: restart windows
+- name: Create enforce policy applied marker
+  ansible.builtin.file:
+    path: "{{ ci_base_path }}\\enforce_policy_applied.marker"
+    state: touch
+  when: ci_enforce_policy_apply is defined and ci_enforce_policy_apply.rc is defined and ci_enforce_policy_apply.rc == 0

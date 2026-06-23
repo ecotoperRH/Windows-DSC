@@ -1,0 +1,7 @@
+---
+- name: restart windows
+  ansible.windows.win_reboot:
+    msg: Reboot initiated by Ansible after applying Code Integrity policy
+    pre_reboot_delay: 15
+    post_reboot_delay: 60
+    reboot_timeout: 600

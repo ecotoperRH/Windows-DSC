@@ -1,0 +1,9 @@
+- name: Apply Code Integrity Policies
+  hosts: windows_servers
+  gather_facts: true
+  vars:
+    enforce_mode: false
+  roles:
+  - role: code_integrity
+    vars:
+      enforce_mode: '{{ enforce_mode }}'

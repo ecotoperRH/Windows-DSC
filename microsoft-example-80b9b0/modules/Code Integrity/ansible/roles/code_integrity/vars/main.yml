@@ -1,0 +1,3 @@
+---
+audit_policy_file: AllowMicrosoft_DenyByPassApps_Audit.xml
+enforce_policy_file: AllowMicrosoft_DenyByPassApps_Enforce.xml

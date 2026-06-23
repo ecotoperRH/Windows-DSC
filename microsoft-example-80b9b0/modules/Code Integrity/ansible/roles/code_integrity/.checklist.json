@@ -1,0 +1,165 @@
+{
+  "module_name": "code_integrity",
+  "items": [
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/meta/main.yml",
+      "status": "complete",
+      "description": "Role metadata file",
+      "notes": "Created meta/main.yml with role metadata"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/tasks/main.yml",
+      "status": "complete",
+      "description": "Main tasks file",
+      "notes": "Created tasks/main.yml with role tasks"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/tasks/deploy_audit.yml",
+      "status": "complete",
+      "description": "Audit mode deployment tasks",
+      "notes": "Created tasks/deploy_audit.yml with audit mode deployment tasks"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/tasks/deploy_enforce.yml",
+      "status": "complete",
+      "description": "Enforce mode deployment tasks",
+      "notes": "Created tasks/deploy_enforce.yml with enforce mode deployment tasks"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/defaults/main.yml",
+      "status": "complete",
+      "description": "Default variables for the role",
+      "notes": "Created defaults/main.yml with configuration variables"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/handlers/main.yml",
+      "status": "complete",
+      "description": "Handlers for the role",
+      "notes": "Created handlers/main.yml with reboot handler"
+    },
+    {
+      "category": "files",
+      "source_path": "code-integrity/Audit/AllowMicrosoft_DenyByPassApps_Audit.xml",
+      "target_path": "./ansible/roles/code_integrity/files/Audit/AllowMicrosoft_DenyByPassApps_Audit.xml",
+      "status": "complete",
+      "description": "Code Integrity Audit policy XML file",
+      "notes": "Copied XML file for Code Integrity Audit policy"
+    },
+    {
+      "category": "files",
+      "source_path": "code-integrity/Enforce/AllowMicrosoft_DenyByPassApps_Enforce.xml",
+      "target_path": "./ansible/roles/code_integrity/files/Enforce/AllowMicrosoft_DenyByPassApps_Enforce.xml",
+      "status": "complete",
+      "description": "Code Integrity Enforce policy XML file",
+      "notes": "Copied XML file for Code Integrity Enforce policy"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/molecule/default/molecule.yml",
+      "status": "complete",
+      "description": "Molecule scenario configuration",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/molecule/default/converge.yml",
+      "status": "complete",
+      "description": "Molecule converge playbook",
+      "notes": "Created molecule converge playbook that simulates the filesystem structure for Code Integrity policies"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/molecule/default/verify.yml",
+      "status": "complete",
+      "description": "Molecule verification tasks",
+      "notes": "Created molecule verify playbook that tests the existence of Code Integrity policy files and markers"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/molecule/default/create.yml",
+      "status": "complete",
+      "description": "Molecule instance creation (no-op)",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/molecule/default/destroy.yml",
+      "status": "complete",
+      "description": "Molecule instance destruction (no-op)",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "./.github/workflows/ansible-ci.yml",
+      "status": "complete",
+      "description": "GitHub Actions workflow for Ansible linting",
+      "notes": "Created GitHub workflow for CI"
+    },
+    {
+      "category": "files",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/README.md",
+      "status": "complete",
+      "description": "Role documentation",
+      "notes": "Created README.md with role documentation"
+    },
+    {
+      "category": "files",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/vars/main.yml",
+      "status": "complete",
+      "description": "Role variables",
+      "notes": "Created vars/main.yml with internal variables"
+    },
+    {
+      "category": "files",
+      "source_path": "N/A",
+      "target_path": "./ansible/playbooks/apply_code_integrity.yml",
+      "status": "complete",
+      "description": "Sample playbook",
+      "notes": "Created sample playbook to use the code_integrity role"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "./ansible/roles/code_integrity/molecule/default/Dockerfile.j2",
+      "status": "complete",
+      "description": "Molecule Dockerfile template",
+      "notes": "Created molecule Dockerfile template"
+    },
+    {
+      "category": "dependencies",
+      "source_path": "N/A",
+      "target_path": "./requirements.txt",
+      "status": "complete",
+      "description": "Python requirements file",
+      "notes": "Created requirements.txt file for Python dependencies"
+    },
+    {
+      "category": "files",
+      "source_path": "N/A",
+      "target_path": "./README.md",
+      "status": "complete",
+      "description": "Project README",
+      "notes": "Created README.md with project documentation"
+    }
+  ]
+}

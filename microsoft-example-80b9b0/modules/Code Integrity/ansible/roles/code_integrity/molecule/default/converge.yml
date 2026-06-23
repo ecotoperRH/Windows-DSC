@@ -1,0 +1,43 @@
+- name: Converge
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Create base directories for testing
+    ansible.builtin.file:
+      path: '{{ item }}'
+      state: directory
+      mode: '0755'
+    loop:
+    - /tmp/molecule_test/ConfigMgr/CodeIntegrity
+    - /tmp/molecule_test/Windows/System32/CodeIntegrity
+  - name: Copy Code Integrity audit policy file
+    ansible.builtin.copy:
+      src: '{{ playbook_dir }}/../../../../files/Audit/AllowMicrosoft_DenyByPassApps_Audit.xml'
+      dest: /tmp/molecule_test/ConfigMgr/CodeIntegrity/AllowMicrosoft_DenyByPassApps_Audit.xml
+      mode: '0644'
+  - name: Copy Code Integrity enforce policy file
+    ansible.builtin.copy:
+      src: '{{ playbook_dir }}/../../../../files/Enforce/AllowMicrosoft_DenyByPassApps_Enforce.xml'
+      dest: /tmp/molecule_test/ConfigMgr/CodeIntegrity/AllowMicrosoft_DenyByPassApps_Enforce.xml
+      mode: '0644'
+  - name: Create audit policy applied marker
+    ansible.builtin.file:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity/audit_policy_applied.marker
+      state: touch
+      mode: '0644'
+  - name: Create enforce policy applied marker
+    ansible.builtin.file:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity/enforce_policy_applied.marker
+      state: touch
+      mode: '0644'
+  - name: Create mock registry structure file
+    ansible.builtin.copy:
+      content: "{\n  \"HKLM\": {\n    \"SYSTEM\": {\n      \"CurrentControlSet\": {\n        \"Control\": {\n          \"CI\": {\n            \"Policy\": {\n              \"VerifiedAndReputablePolicyState\":
+        1\n            }\n          }\n        }\n      }\n    }\n  }\n}\n"
+      dest: /tmp/molecule_test/registry_structure.json
+      mode: '0644'
+  - name: Create mock SIPolicy.p7b file
+    ansible.builtin.file:
+      path: /tmp/molecule_test/Windows/System32/CodeIntegrity/SIPolicy.p7b
+      state: touch
+      mode: '0644'

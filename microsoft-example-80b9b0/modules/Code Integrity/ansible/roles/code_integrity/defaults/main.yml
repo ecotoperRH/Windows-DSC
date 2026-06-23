@@ -1,0 +1,3 @@
+---
+enforce_mode: false
+ci_base_path: C:\ConfigMgr\CodeIntegrity

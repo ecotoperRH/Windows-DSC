@@ -1,0 +1,91 @@
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check if Code Integrity directory exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity
+    register: ci_dir
+  - name: Assert Code Integrity directory exists
+    ansible.builtin.assert:
+      that:
+      - ci_dir.stat.exists
+      - ci_dir.stat.isdir
+      fail_msg: Code Integrity directory does not exist
+      success_msg: Code Integrity directory exists
+  - name: Check if audit policy file exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity/AllowMicrosoft_DenyByPassApps_Audit.xml
+    register: audit_policy_file
+  - name: Assert audit policy file exists
+    ansible.builtin.assert:
+      that:
+      - audit_policy_file.stat.exists
+      - audit_policy_file.stat.isreg
+      fail_msg: Audit policy file does not exist
+      success_msg: Audit policy file exists
+  - name: Check if enforce policy file exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity/AllowMicrosoft_DenyByPassApps_Enforce.xml
+    register: enforce_policy_file
+  - name: Assert enforce policy file exists
+    ansible.builtin.assert:
+      that:
+      - enforce_policy_file.stat.exists
+      - enforce_policy_file.stat.isreg
+      fail_msg: Enforce policy file does not exist
+      success_msg: Enforce policy file exists
+  - name: Check if audit policy applied marker exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity/audit_policy_applied.marker
+    register: audit_marker
+  - name: Assert audit policy applied marker exists
+    ansible.builtin.assert:
+      that:
+      - audit_marker.stat.exists
+      fail_msg: Audit policy applied marker does not exist
+      success_msg: Audit policy applied marker exists
+  - name: Check if enforce policy applied marker exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/ConfigMgr/CodeIntegrity/enforce_policy_applied.marker
+    register: enforce_marker
+  - name: Assert enforce policy applied marker exists
+    ansible.builtin.assert:
+      that:
+      - enforce_marker.stat.exists
+      fail_msg: Enforce policy applied marker does not exist
+      success_msg: Enforce policy applied marker exists
+  - name: Check if SIPolicy.p7b file exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/Windows/System32/CodeIntegrity/SIPolicy.p7b
+    register: sipolicy_file
+  - name: Assert SIPolicy.p7b file exists
+    ansible.builtin.assert:
+      that:
+      - sipolicy_file.stat.exists
+      fail_msg: SIPolicy.p7b file does not exist
+      success_msg: SIPolicy.p7b file exists
+  - name: Check if registry structure file exists
+    ansible.builtin.stat:
+      path: /tmp/molecule_test/registry_structure.json
+    register: registry_file
+  - name: Assert registry structure file exists
+    ansible.builtin.assert:
+      that:
+      - registry_file.stat.exists
+      fail_msg: Registry structure file does not exist
+      success_msg: Registry structure file exists
+  - name: Check Code Integrity status
+    ansible.builtin.slurp:
+      src: /tmp/molecule_test/registry_structure.json
+    register: registry_content
+    when: false
+    tags: molecule-notest
+  - name: Assert Code Integrity is enabled
+    ansible.builtin.assert:
+      that:
+      - (registry_content.content | b64decode | from_json).HKLM.SYSTEM.CurrentControlSet.Control.CI.Policy.VerifiedAndReputablePolicyState == 1
+      fail_msg: Code Integrity is not enabled
+      success_msg: Code Integrity is enabled
+    when: false
+    tags: molecule-notest
