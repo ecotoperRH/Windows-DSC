@@ -1,0 +1,51 @@
+---
+- name: Set UAC ConsentPromptBehaviorAdmin to AlwaysNotify
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: ConsentPromptBehaviorAdmin
+    data: "{{ standalonehypervisordell_uac_consent_prompt_behavior_admin }}"
+    type: dword
+    state: present
+- name: Set UAC ConsentPromptBehaviorUser
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: ConsentPromptBehaviorUser
+    data: "{{ standalonehypervisordell_uac_consent_prompt_behavior_user }}"
+    type: dword
+    state: present
+- name: Set UAC EnableLUA
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: EnableLUA
+    data: "{{ standalonehypervisordell_uac_enable_lua }}"
+    type: dword
+    state: present
+- name: Set UAC PromptOnSecureDesktop
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: PromptOnSecureDesktop
+    data: "{{ standalonehypervisordell_uac_prompt_on_secure_desktop }}"
+    type: dword
+    state: present
+- name: Get current timezone
+  ansible.windows.win_shell: (Get-TimeZone).Id
+  register: standalonehypervisordell_current_tz
+  changed_when: false
+- name: Set timezone to Pacific Standard Time
+  ansible.windows.win_shell: Set-TimeZone -Id '{{ standalonehypervisordell_timezone }}'
+  when: standalonehypervisordell_current_tz.stdout | trim != standalonehypervisordell_timezone
+- name: Set PowerShell execution policy to RemoteSigned via registry
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell
+    name: ExecutionPolicy
+    data: "{{ standalonehypervisordell_execution_policy }}"
+    type: string
+    state: present
+- name: Create admin directory
+  ansible.windows.win_file:
+    path: "{{ standalonehypervisordell_admin_path }}"
+    state: directory
+- name: Remove API registration folder
+  ansible.windows.win_file:
+    path: "{{ standalonehypervisordell_api_folder_path }}"
+    state: absent

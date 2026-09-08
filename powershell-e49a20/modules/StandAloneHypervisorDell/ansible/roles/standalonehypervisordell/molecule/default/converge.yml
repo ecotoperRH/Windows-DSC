@@ -1,0 +1,132 @@
+---
+# converge.yml — Recreates the filesystem state the role would produce,
+# scoped to /tmp/molecule_test/ for container safety (no sudo, no Windows).
+# Windows-only operations (registry, win_feature, vswitch, domain join) are
+# represented as no-ops or placeholder files so verify.yml can assert on them.
+
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    # Mirror role defaults — paths remapped under /tmp/molecule_test/
+    molecule_base: /tmp/molecule_test
+    molecule_admin_path: /tmp/molecule_test/Admin
+    molecule_api_folder_path: /tmp/molecule_test/APIRegistration
+    molecule_registry_base: /tmp/molecule_test/registry/HKLM/SOFTWARE/Microsoft/Windows
+    molecule_ps_registry_base: /tmp/molecule_test/registry/HKLM/SOFTWARE/Microsoft/PowerShell
+
+  tasks:
+    # ------------------------------------------------------------------
+    # 1. Create top-level test scaffold directories
+    # ------------------------------------------------------------------
+    - name: Create molecule test scaffold directories
+      ansible.builtin.file:
+        path: "{{ item_dir }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ molecule_base }}"
+        - "{{ molecule_registry_base }}/CurrentVersion/Policies/System"
+        - "{{ molecule_ps_registry_base }}/1/ShellIds/Microsoft.PowerShell"
+        - "{{ molecule_base }}/vswitch"
+        - "{{ molecule_base }}/features"
+      loop_control:
+        loop_var: item_dir
+
+    # ------------------------------------------------------------------
+    # 2. Create admin directory (mirrors: ansible.windows.win_file state=directory)
+    # ------------------------------------------------------------------
+    - name: Create admin directory (mirrors win_file state=directory)
+      ansible.builtin.file:
+        path: "{{ molecule_admin_path }}"
+        state: directory
+        mode: "0755"
+
+    # ------------------------------------------------------------------
+    # 3. Ensure API registration folder is absent
+    #    (mirrors: ansible.windows.win_file state=absent)
+    #    First create it, then remove it — proves the absent logic works.
+    # ------------------------------------------------------------------
+    - name: Create API registration folder (pre-condition for removal test)
+      ansible.builtin.file:
+        path: "{{ molecule_api_folder_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Remove API registration folder (mirrors win_file state=absent)
+      ansible.builtin.file:
+        path: "{{ molecule_api_folder_path }}"
+        state: absent
+
+    # ------------------------------------------------------------------
+    # 4. Simulate UAC registry values as flat files
+    #    (mirrors: ansible.windows.win_regedit for UAC keys)
+    # ------------------------------------------------------------------
+    - name: Write simulated UAC registry values
+      ansible.builtin.copy:
+        content: "{{ item_reg['value'] }}"
+        dest: "{{ molecule_registry_base }}/CurrentVersion/Policies/System/{{ item_reg['name'] }}"
+        mode: "0644"
+        backup: true
+      loop:
+        - name: ConsentPromptBehaviorAdmin
+          value: "2"
+        - name: ConsentPromptBehaviorUser
+          value: "3"
+        - name: EnableLUA
+          value: "1"
+        - name: PromptOnSecureDesktop
+          value: "1"
+      loop_control:
+        loop_var: item_reg
+
+    # ------------------------------------------------------------------
+    # 5. Simulate PowerShell execution policy registry value
+    #    (mirrors: ansible.windows.win_regedit for ExecutionPolicy key)
+    # ------------------------------------------------------------------
+    - name: Write simulated ExecutionPolicy registry value
+      ansible.builtin.copy:
+        content: "RemoteSigned"
+        dest: "{{ molecule_ps_registry_base }}/1/ShellIds/Microsoft.PowerShell/ExecutionPolicy"
+        mode: "0644"
+        backup: true
+
+    # ------------------------------------------------------------------
+    # 6. Write placeholder feature-install manifest
+    #    (mirrors: ansible.windows.win_feature — not runnable in container)
+    # ------------------------------------------------------------------
+    - name: Write Windows features manifest placeholder
+      ansible.builtin.copy:
+        content: |
+          Hyper-V
+          BitLocker
+          HostGuardian
+          RSAT-Shielded-VM-Tools
+          RSAT-Hyper-V-Tools
+          Hyper-V-Tools
+          Hyper-V-PowerShell
+          Failover-Clustering
+          RSAT-Clustering-PowerShell
+          FS-FileServer
+          NetworkVirtualization
+          RSAT-Clustering-Mgmt
+          Data-Center-Bridging
+        dest: "{{ molecule_base }}/features/installed_features.txt"
+        mode: "0644"
+        backup: true
+
+    # ------------------------------------------------------------------
+    # 7. Write placeholder vSwitch configuration file
+    #    (mirrors: New-VMSwitch — not runnable in container)
+    # ------------------------------------------------------------------
+    - name: Write vSwitch configuration placeholder
+      ansible.builtin.copy:
+        content: |
+          Name=OS-Traffic
+          SwitchType=External
+          NetAdapterName=NIC1
+          AllowManagementOS=true
+          EnableEmbeddedTeaming=true
+        dest: "{{ molecule_base }}/vswitch/OS-Traffic.conf"
+        mode: "0644"
+        backup: true

@@ -1,0 +1,7 @@
+---
+- name: Reboot after feature installation
+  ansible.windows.win_reboot:
+    reboot_timeout: "{{ standalonehypervisordell_reboot_timeout }}"
+    post_reboot_delay: "{{ standalonehypervisordell_post_reboot_delay }}"
+    msg: Rebooting after Windows feature installation
+  listen: reboot_required

@@ -1,0 +1,31 @@
+---
+standalonehypervisordell_timezone: Pacific Standard Time
+standalonehypervisordell_execution_policy: RemoteSigned
+standalonehypervisordell_execution_policy_scope: LocalMachine
+standalonehypervisordell_uac_consent_prompt_behavior_admin: 2
+standalonehypervisordell_uac_consent_prompt_behavior_user: 3
+standalonehypervisordell_uac_enable_lua: 1
+standalonehypervisordell_uac_prompt_on_secure_desktop: 1
+standalonehypervisordell_admin_path: C:\Admin
+standalonehypervisordell_api_folder_path: C:\APIRegistration
+standalonehypervisordell_domain_name: ""
+standalonehypervisordell_windows_features:
+  - Hyper-V
+  - BitLocker
+  - HostGuardian
+  - RSAT-Shielded-VM-Tools
+  - RSAT-Hyper-V-Tools
+  - Hyper-V-Tools
+  - Hyper-V-PowerShell
+  - Failover-Clustering
+  - RSAT-Clustering-PowerShell
+  - FS-FileServer
+  - NetworkVirtualization
+  - RSAT-Clustering-Mgmt
+  - Data-Center-Bridging
+standalonehypervisordell_vswitch_name: OS-Traffic
+standalonehypervisordell_vswitch_nic: NIC1
+standalonehypervisordell_vswitch_allow_management_os: true
+standalonehypervisordell_vswitch_enable_embedded_teaming: true
+standalonehypervisordell_reboot_timeout: 600
+standalonehypervisordell_post_reboot_delay: 30

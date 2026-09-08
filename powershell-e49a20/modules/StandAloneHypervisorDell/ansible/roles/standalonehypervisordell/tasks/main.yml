@@ -1,0 +1,11 @@
+---
+- name: Validate credential variables
+  ansible.builtin.include_tasks: validate_credentials.yml
+- name: Apply base OS settings
+  ansible.builtin.include_tasks: base_os.yml
+- name: Install Windows features
+  ansible.builtin.include_tasks: windows_features.yml
+- name: Join Active Directory domain
+  ansible.builtin.include_tasks: domain_join.yml
+- name: Configure Hyper-V virtual switch
+  ansible.builtin.include_tasks: vswitch.yml

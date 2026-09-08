@@ -1,0 +1,121 @@
+---
+argument_specs:
+  main:
+    short_description: Provision a standalone Hyper-V hypervisor host on a Dell server
+    description:
+      - Configures base OS settings including UAC, timezone, and PowerShell execution policy.
+      - Creates required admin directories and removes legacy API registration folders.
+      - Joins the host to an Active Directory domain using AAP-injected credentials.
+      - Installs all required Windows features including Hyper-V, BitLocker, Host Guardian, Failover Clustering, and related RSAT tools.
+      - Creates an external Hyper-V virtual switch named OS-Traffic with Switch Embedded Teaming (SET) enabled on the specified physical NIC.
+    options:
+      standalonehypervisordell_timezone:
+        type: str
+        required: false
+        default: Pacific Standard Time
+        description: Windows timezone identifier to set on the host. Use a valid Windows timezone ID (e.g. 'Pacific Standard Time').
+      standalonehypervisordell_execution_policy:
+        type: str
+        required: false
+        default: RemoteSigned
+        description: PowerShell execution policy to apply at the LocalMachine scope.
+      standalonehypervisordell_execution_policy_scope:
+        type: str
+        required: false
+        default: LocalMachine
+        description: Scope at which the PowerShell execution policy is applied.
+      standalonehypervisordell_uac_consent_prompt_behavior_admin:
+        type: int
+        required: false
+        default: 2
+        description: Registry value for ConsentPromptBehaviorAdmin under the UAC policy key. 2 = AlwaysNotify (most restrictive).
+      standalonehypervisordell_uac_consent_prompt_behavior_user:
+        type: int
+        required: false
+        default: 3
+        description: Registry value for ConsentPromptBehaviorUser under the UAC policy key. 3 = Prompt for credentials on secure desktop.
+      standalonehypervisordell_uac_enable_lua:
+        type: int
+        required: false
+        default: 1
+        description: Registry value for EnableLUA under the UAC policy key. 1 = UAC enabled.
+      standalonehypervisordell_uac_prompt_on_secure_desktop:
+        type: int
+        required: false
+        default: 1
+        description: Registry value for PromptOnSecureDesktop under the UAC policy key. 1 = Prompt on secure desktop.
+      standalonehypervisordell_admin_path:
+        type: str
+        required: false
+        default: C:\Admin
+        description: Filesystem path for the admin directory to create on the target host. Corresponds to the ADMIN_PATH Azure Automation variable.
+      standalonehypervisordell_api_folder_path:
+        type: str
+        required: false
+        default: C:\APIRegistration
+        description: Filesystem path of the API registration folder to remove from the target host. Corresponds to the API_FOLDER_PATH Azure Automation
+          variable.
+      standalonehypervisordell_domain_name:
+        type: str
+        required: false
+        default: ""
+        description: Fully qualified domain name (FQDN) of the Active Directory domain to join. Corresponds to the DOMAIN_NAME Azure Automation variable.
+      standalonehypervisordell_windows_features:
+        type: list
+        elements: str
+        required: false
+        default:
+          - Hyper-V
+          - BitLocker
+          - HostGuardian
+          - RSAT-Shielded-VM-Tools
+          - RSAT-Hyper-V-Tools
+          - Hyper-V-Tools
+          - Hyper-V-PowerShell
+          - Failover-Clustering
+          - RSAT-Clustering-PowerShell
+          - FS-FileServer
+          - NetworkVirtualization
+          - RSAT-Clustering-Mgmt
+          - Data-Center-Bridging
+        description: List of Windows feature names to install with all sub-features included.
+      standalonehypervisordell_vswitch_name:
+        type: str
+        required: false
+        default: OS-Traffic
+        description: Name of the Hyper-V external virtual switch to create.
+      standalonehypervisordell_vswitch_nic:
+        type: str
+        required: false
+        default: NIC1
+        description: Name of the physical network adapter to bind the virtual switch to.
+      standalonehypervisordell_vswitch_allow_management_os:
+        type: bool
+        required: false
+        default: true
+        description: Whether the host management OS shares the virtual switch (AllowManagementOS).
+      standalonehypervisordell_vswitch_enable_embedded_teaming:
+        type: bool
+        required: false
+        default: true
+        description: Whether to enable Switch Embedded Teaming (SET) on the virtual switch.
+      standalonehypervisordell_reboot_timeout:
+        type: int
+        required: false
+        default: 600
+        description: Maximum seconds to wait for the host to come back online after a reboot.
+      standalonehypervisordell_post_reboot_delay:
+        type: int
+        required: false
+        default: 30
+        description: Seconds to wait after a successful reboot before continuing with tasks.
+      domain_join_username:
+        type: str
+        required: true
+        description: Username for the Active Directory domain join account. Injected at runtime by the AAP Domain Join credential type. Do not set this in
+          defaults or vars - it must come from AAP credentials.
+      domain_join_password:
+        type: str
+        required: true
+        description: Password for the Active Directory domain join account. Injected at runtime by the AAP Domain Join credential type. Do not set this in
+          defaults or vars - it must come from AAP credentials.

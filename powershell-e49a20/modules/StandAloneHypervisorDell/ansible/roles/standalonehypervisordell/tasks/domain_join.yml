@@ -1,0 +1,19 @@
+---
+- name: Test domain controller reachability on LDAP port
+  ansible.windows.win_shell: "$result = Test-NetConnection -ComputerName \"{{ standalonehypervisordell_domain_name }}\" -Port 389\nif (-not $result.TcpTestSucceeded)
+    {\n  throw \"Cannot reach domain controller for {{ standalonehypervisordell_domain_name }} on port 389\"\n}\n"
+  changed_when: false
+- name: Get current domain membership
+  ansible.windows.win_shell: (Get-WmiObject Win32_ComputerSystem).Domain
+  register: standalonehypervisordell_current_domain
+  changed_when: false
+- name: Join Active Directory domain
+  ansible.windows.win_domain_membership:
+    dns_domain_name: "{{ standalonehypervisordell_domain_name }}"
+    domain_admin_user: "{{ domain_join_username }}"
+    domain_admin_password: "{{ domain_join_password }}"
+    state: domain
+  notify: reboot_required
+  when: standalonehypervisordell_current_domain.stdout | trim | lower != standalonehypervisordell_domain_name | lower
+- name: Flush handlers to reboot after domain join
+  ansible.builtin.meta: flush_handlers

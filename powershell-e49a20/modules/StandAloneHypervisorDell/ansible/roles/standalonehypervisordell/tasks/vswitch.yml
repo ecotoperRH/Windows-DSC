@@ -1,0 +1,28 @@
+---
+- name: Verify NIC adapter exists
+  ansible.windows.win_shell: "$adapter = Get-NetAdapter -Name '{{ standalonehypervisordell_vswitch_nic }}' -ErrorAction Stop\nif ($adapter.Status -eq $null) {\n \
+    \ throw \"Adapter {{ standalonehypervisordell_vswitch_nic }} not found\"\n}\n$adapter.Name\n"
+  register: standalonehypervisordell_nic_check
+  changed_when: false
+- name: Display NIC adapter status
+  ansible.builtin.debug:
+    msg: "NIC adapter found: {{ standalonehypervisordell_nic_check.stdout | trim }}"
+- name: Check if OS-Traffic vSwitch already exists
+  ansible.windows.win_shell: "$sw = Get-VMSwitch -Name '{{ standalonehypervisordell_vswitch_name }}' -ErrorAction SilentlyContinue\nif ($sw) { 'present' } else {
+    'absent' }\n"
+  register: standalonehypervisordell_vswitch_check
+  changed_when: false
+- name: Create external Hyper-V virtual switch with SET
+  ansible.windows.win_shell: New-VMSwitch -Name '{{ standalonehypervisordell_vswitch_name }}' -NetAdapterName '{{ standalonehypervisordell_vswitch_nic }}'
+    -AllowManagementOS ${{ standalonehypervisordell_vswitch_allow_management_os | ternary('true', 'false') }} -EnableEmbeddedTeaming ${{
+    standalonehypervisordell_vswitch_enable_embedded_teaming | ternary('true', 'false') }}
+  when: standalonehypervisordell_vswitch_check.stdout | trim == 'absent'
+- name: Verify OS-Traffic vSwitch exists and is correctly configured
+  ansible.windows.win_shell: "$sw = Get-VMSwitch -Name '{{ standalonehypervisordell_vswitch_name }}' -ErrorAction Stop\nif ($sw.SwitchType -ne 'External') {\n  throw
+    \"Switch type is $($sw.SwitchType), expected External\"\n}\nif (-not $sw.EmbeddedTeamingEnabled) {\n  throw \"Switch Embedded Teaming (SET) is not enabled\"\n\
+    }\n\"vSwitch OK: Name=$($sw.Name) Type=$($sw.SwitchType) SET=$($sw.EmbeddedTeamingEnabled)\"\n"
+  register: standalonehypervisordell_vswitch_verify
+  changed_when: false
+- name: Display vSwitch verification result
+  ansible.builtin.debug:
+    msg: "{{ standalonehypervisordell_vswitch_verify.stdout | trim }}"

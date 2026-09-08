@@ -1,0 +1,141 @@
+{
+  "module_name": "standalonehypervisordell",
+  "items": [
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/aap-configuration/controller_credential_types.yml",
+      "status": "complete",
+      "description": "AAP credential types configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/aap-configuration/controller_credentials.yml",
+      "status": "complete",
+      "description": "AAP credentials configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/tasks/validate_credentials.yml",
+      "status": "complete",
+      "description": "Credential validation tasks",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/meta/main.yml",
+      "status": "complete",
+      "description": "Role metadata (author, description, platform, license)",
+      "notes": "Created standard meta/main.yml"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/handlers/main.yml",
+      "status": "complete",
+      "description": "Handlers \u2014 win_reboot handler triggered after Windows feature installation",
+      "notes": "Created handler for post-feature-install reboot"
+    },
+    {
+      "category": "attributes",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/defaults/main.yml",
+      "status": "complete",
+      "description": "Ansible defaults \u2014 admin_path, api_folder_path, domain_name, NIC name, vSwitch name, feature list, timezone, UAC registry values, execution policy",
+      "notes": "Converted Azure Automation variables and DSC configuration parameters to Ansible defaults"
+    },
+    {
+      "category": "structure",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/meta/argument_specs.yml",
+      "status": "complete",
+      "description": "Role argument specs for fail-fast parameter validation \u2014 generate after defaults/main.yml is written",
+      "notes": "Generated argument_specs.yml documenting all role parameters including AAP credential variables"
+    },
+    {
+      "category": "recipes",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/tasks/base_os.yml",
+      "status": "complete",
+      "description": "Base OS hardening tasks \u2014 UAC (win_regedit), timezone (win_shell), PowerShell execution policy (win_regedit/win_shell), admin folder (win_file present), API folder removal (win_file absent)",
+      "notes": "Converted DSC base OS settings: UAC registry, timezone, execution policy, directory management"
+    },
+    {
+      "category": "recipes",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/tasks/main.yml",
+      "status": "complete",
+      "description": "Main tasks entry point \u2014 orchestrates all sub-task files in order",
+      "notes": "Created main.yml orchestrating credential validation, base OS, features, domain join, and vswitch tasks in correct order"
+    },
+    {
+      "category": "recipes",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/tasks/domain_join.yml",
+      "status": "complete",
+      "description": "Domain join tasks \u2014 join host to AD domain using ansible.windows.win_domain_membership with credentials from Ansible Vault; reboot after join",
+      "notes": "Converted xDSCDomainjoin to win_domain_membership with AAP credential variables"
+    },
+    {
+      "category": "recipes",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/tasks/windows_features.yml",
+      "status": "complete",
+      "description": "Windows features installation \u2014 install all 13 features (Hyper-V, BitLocker, HostGuardian, RSAT-Shielded-VM-Tools, RSAT-Hyper-V-Tools, Hyper-V-Tools, Hyper-V-PowerShell, Failover-Clustering, RSAT-Clustering-PowerShell, FS-FileServer, NetworkVirtualization, RSAT-Clustering-Mgmt, Data-Center-Bridging) with include_sub_features; notify reboot handler",
+      "notes": "Converted WindowsFeatureSet DSC resource to win_feature with all 13 features, reboot handling, and verification"
+    },
+    {
+      "category": "recipes",
+      "source_path": "StandAloneHypervisorDell.ps1",
+      "target_path": "ansible/roles/standalonehypervisordell/tasks/vswitch.yml",
+      "status": "complete",
+      "description": "Hyper-V virtual switch creation \u2014 create external vSwitch 'OS-Traffic' on NIC1 with SET enabled using ansible.windows.win_shell (New-VMSwitch); must run after reboot post-feature-install; includes idempotency guard (Get-VMSwitch check)",
+      "notes": "Converted xVMSwitch DSC resource to win_shell with New-VMSwitch, NIC pre-flight check, and verification"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/molecule/default/molecule.yml",
+      "status": "complete",
+      "description": "Molecule scenario configuration \u2014 delegated driver, local connection (not docker/podman)",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/molecule/default/converge.yml",
+      "status": "complete",
+      "description": "Molecule converge playbook \u2014 creates expected filesystem state under /tmp/molecule_test/ (admin_path directory present, api_folder_path absent); exercises base_os, windows_features, domain_join, vswitch tasks",
+      "notes": "Generated converge.yml: creates /tmp/molecule_test/ scaffold with admin dir, absent API folder, simulated UAC/ExecutionPolicy registry files, features manifest, and vSwitch config placeholder. All loops use loop_control with prefixed loop_var and bracket notation."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/molecule/default/verify.yml",
+      "status": "complete",
+      "description": "Molecule verify playbook \u2014 checks /tmp/molecule_test/ paths: admin_path directory exists, api_folder_path absent, UAC registry keys set, execution policy registry key set, vmms/HvHost services running, OS-Traffic vSwitch present with SET enabled, domain membership correct",
+      "notes": "Generated verify.yml split into 3 plays: Play 1 (directory/file existence via stat+assert), Play 2 (file content via slurp+assert for UAC values, ExecutionPolicy, features manifest, vSwitch config), Play 3 (Windows-only checks tagged molecule-notest: NIC1, vmms/HvHost services, vSwitch, win_feature, domain membership, registry values)."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/molecule/default/create.yml",
+      "status": "complete",
+      "description": "Molecule no-op instance create playbook (delegated driver)",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/standalonehypervisordell/molecule/default/destroy.yml",
+      "status": "complete",
+      "description": "Molecule no-op instance destroy playbook (delegated driver)",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    }
+  ]
+}

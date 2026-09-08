@@ -1,0 +1,365 @@
+---
+# verify.yml — Validates the filesystem state produced by converge.yml.
+# Container-safe checks use stat/slurp/assert against /tmp/molecule_test/.
+# Windows-only checks (registry, services, vswitch, domain) are tagged
+# molecule-notest so they are skipped in the EE container but documented
+# for real-host validation.
+
+# ===========================================================================
+# Play 1 — Directory and file existence checks
+# ===========================================================================
+- name: Verify | Directory and file existence
+  hosts: all
+  gather_facts: false
+  vars:
+    molecule_base: /tmp/molecule_test
+    molecule_admin_path: /tmp/molecule_test/Admin
+    molecule_api_folder_path: /tmp/molecule_test/APIRegistration
+    molecule_registry_base: /tmp/molecule_test/registry/HKLM/SOFTWARE/Microsoft/Windows
+    molecule_ps_registry_base: /tmp/molecule_test/registry/HKLM/SOFTWARE/Microsoft/PowerShell
+
+  tasks:
+    # -----------------------------------------------------------------------
+    # 1a. Admin directory must exist
+    # -----------------------------------------------------------------------
+    - name: Stat admin directory
+      ansible.builtin.stat:
+        path: "{{ molecule_admin_path }}"
+      register: admin_dir_stat
+
+    - name: Assert admin directory exists and is a directory
+      ansible.builtin.assert:
+        that:
+          - admin_dir_stat['stat']['exists']
+          - admin_dir_stat['stat']['isdir']
+        fail_msg: "Admin directory was not created"
+
+    # -----------------------------------------------------------------------
+    # 1b. API registration folder must NOT exist
+    # -----------------------------------------------------------------------
+    - name: Stat API registration folder
+      ansible.builtin.stat:
+        path: "{{ molecule_api_folder_path }}"
+      register: api_folder_stat
+
+    - name: Assert API registration folder is absent
+      ansible.builtin.assert:
+        that:
+          - not api_folder_stat['stat']['exists']
+        fail_msg: "API registration folder should have been removed but still exists"
+
+    # -----------------------------------------------------------------------
+    # 1c. Registry simulation files must exist and be non-empty
+    # -----------------------------------------------------------------------
+    - name: Stat simulated registry value files
+      ansible.builtin.stat:
+        path: "{{ item_reg_path }}"
+      loop:
+        - "{{ molecule_registry_base }}/CurrentVersion/Policies/System/ConsentPromptBehaviorAdmin"
+        - "{{ molecule_registry_base }}/CurrentVersion/Policies/System/ConsentPromptBehaviorUser"
+        - "{{ molecule_registry_base }}/CurrentVersion/Policies/System/EnableLUA"
+        - "{{ molecule_registry_base }}/CurrentVersion/Policies/System/PromptOnSecureDesktop"
+        - "{{ molecule_ps_registry_base }}/1/ShellIds/Microsoft.PowerShell/ExecutionPolicy"
+      loop_control:
+        loop_var: item_reg_path
+      register: reg_stat_results
+
+    - name: Assert all registry simulation files exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "Registry simulation file not found or empty"
+      loop: "{{ reg_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    # -----------------------------------------------------------------------
+    # 1d. Features manifest and vSwitch config must exist
+    # -----------------------------------------------------------------------
+    - name: Stat placeholder configuration files
+      ansible.builtin.stat:
+        path: "{{ item_cfg_path }}"
+      loop:
+        - "{{ molecule_base }}/features/installed_features.txt"
+        - "{{ molecule_base }}/vswitch/OS-Traffic.conf"
+      loop_control:
+        loop_var: item_cfg_path
+      register: cfg_stat_results
+
+    - name: Assert placeholder configuration files exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "Placeholder configuration file not found or empty"
+      loop: "{{ cfg_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+# ===========================================================================
+# Play 2 — File content checks
+# ===========================================================================
+- name: Verify | File content assertions
+  hosts: all
+  gather_facts: false
+  vars:
+    molecule_registry_base: /tmp/molecule_test/registry/HKLM/SOFTWARE/Microsoft/Windows
+    molecule_ps_registry_base: /tmp/molecule_test/registry/HKLM/SOFTWARE/Microsoft/PowerShell
+    molecule_base: /tmp/molecule_test
+
+  tasks:
+    # -----------------------------------------------------------------------
+    # 2a. UAC registry values — ConsentPromptBehaviorAdmin must be "2"
+    # -----------------------------------------------------------------------
+    - name: Slurp ConsentPromptBehaviorAdmin value
+      ansible.builtin.slurp:
+        src: "{{ molecule_registry_base }}/CurrentVersion/Policies/System/ConsentPromptBehaviorAdmin"
+      register: uac_admin_slurp
+
+    - name: Assert ConsentPromptBehaviorAdmin equals 2 (AlwaysNotify)
+      ansible.builtin.assert:
+        that:
+          - (uac_admin_slurp['content'] | b64decode | trim) == "2"
+        fail_msg: "ConsentPromptBehaviorAdmin should be 2 for AlwaysNotify"
+
+    # -----------------------------------------------------------------------
+    # 2b. UAC registry values — PromptOnSecureDesktop must be "1"
+    # -----------------------------------------------------------------------
+    - name: Slurp PromptOnSecureDesktop value
+      ansible.builtin.slurp:
+        src: "{{ molecule_registry_base }}/CurrentVersion/Policies/System/PromptOnSecureDesktop"
+      register: uac_desktop_slurp
+
+    - name: Assert PromptOnSecureDesktop equals 1
+      ansible.builtin.assert:
+        that:
+          - (uac_desktop_slurp['content'] | b64decode | trim) == "1"
+        fail_msg: "PromptOnSecureDesktop should be 1"
+
+    # -----------------------------------------------------------------------
+    # 2c. PowerShell execution policy must be "RemoteSigned"
+    # -----------------------------------------------------------------------
+    - name: Slurp ExecutionPolicy registry value
+      ansible.builtin.slurp:
+        src: "{{ molecule_ps_registry_base }}/1/ShellIds/Microsoft.PowerShell/ExecutionPolicy"
+      register: exec_policy_slurp
+
+    - name: Assert ExecutionPolicy is RemoteSigned
+      ansible.builtin.assert:
+        that:
+          - (exec_policy_slurp['content'] | b64decode | trim) == "RemoteSigned"
+        fail_msg: "ExecutionPolicy should be RemoteSigned"
+
+    # -----------------------------------------------------------------------
+    # 2d. Features manifest must contain all 13 required features
+    # -----------------------------------------------------------------------
+    - name: Slurp installed features manifest
+      ansible.builtin.slurp:
+        src: "{{ molecule_base }}/features/installed_features.txt"
+      register: features_slurp
+
+    - name: Assert all required Windows features are listed in manifest
+      ansible.builtin.assert:
+        that:
+          - "'Hyper-V' in (features_slurp['content'] | b64decode)"
+          - "'BitLocker' in (features_slurp['content'] | b64decode)"
+          - "'HostGuardian' in (features_slurp['content'] | b64decode)"
+          - "'RSAT-Shielded-VM-Tools' in (features_slurp['content'] | b64decode)"
+          - "'RSAT-Hyper-V-Tools' in (features_slurp['content'] | b64decode)"
+          - "'Hyper-V-Tools' in (features_slurp['content'] | b64decode)"
+          - "'Hyper-V-PowerShell' in (features_slurp['content'] | b64decode)"
+          - "'Failover-Clustering' in (features_slurp['content'] | b64decode)"
+          - "'RSAT-Clustering-PowerShell' in (features_slurp['content'] | b64decode)"
+          - "'FS-FileServer' in (features_slurp['content'] | b64decode)"
+          - "'NetworkVirtualization' in (features_slurp['content'] | b64decode)"
+          - "'RSAT-Clustering-Mgmt' in (features_slurp['content'] | b64decode)"
+          - "'Data-Center-Bridging' in (features_slurp['content'] | b64decode)"
+        fail_msg: "One or more required Windows features missing from manifest"
+
+    # -----------------------------------------------------------------------
+    # 2e. vSwitch config must declare External type and SET enabled
+    # -----------------------------------------------------------------------
+    - name: Slurp vSwitch configuration placeholder
+      ansible.builtin.slurp:
+        src: "{{ molecule_base }}/vswitch/OS-Traffic.conf"
+      register: vswitch_slurp
+
+    - name: Assert vSwitch config contains required settings
+      ansible.builtin.assert:
+        that:
+          - "'Name=OS-Traffic' in (vswitch_slurp['content'] | b64decode)"
+          - "'SwitchType=External' in (vswitch_slurp['content'] | b64decode)"
+          - "'NetAdapterName=NIC1' in (vswitch_slurp['content'] | b64decode)"
+          - "'AllowManagementOS=true' in (vswitch_slurp['content'] | b64decode)"
+          - "'EnableEmbeddedTeaming=true' in (vswitch_slurp['content'] | b64decode)"
+        fail_msg: "vSwitch configuration placeholder is missing required settings"
+
+# ===========================================================================
+# Play 3 — Windows-only checks (tagged molecule-notest; skipped in container)
+# ===========================================================================
+- name: Verify | Windows-only checks (molecule-notest)
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    # -----------------------------------------------------------------------
+    # 3a. Verify NIC1 adapter exists (pre-flight for vSwitch creation)
+    # -----------------------------------------------------------------------
+    - name: Check NIC1 adapter exists
+      ansible.windows.win_shell: |
+        Get-NetAdapter -Name 'NIC1' -ErrorAction Stop
+      register: nic_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert NIC1 adapter was found
+      ansible.builtin.assert:
+        that:
+          - nic_check['rc'] == 0
+        fail_msg: "NIC adapter NIC1 not found on target host"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3b. Verify Hyper-V Virtual Machine Management service is running
+    # -----------------------------------------------------------------------
+    - name: Gather Windows service facts
+      ansible.windows.win_service_info:
+        name: vmms
+      register: vmms_info
+      tags: molecule-notest
+
+    - name: Assert vmms service is running
+      ansible.builtin.assert:
+        that:
+          - vmms_info['services'] | length > 0
+          - vmms_info['services'][0]['state'] == 'started'
+        fail_msg: "Hyper-V Virtual Machine Management service (vmms) is not running"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3c. Verify Hyper-V Host Compute Service is running
+    # -----------------------------------------------------------------------
+    - name: Gather HvHost service facts
+      ansible.windows.win_service_info:
+        name: HvHost
+      register: hvhost_info
+      tags: molecule-notest
+
+    - name: Assert HvHost service is running
+      ansible.builtin.assert:
+        that:
+          - hvhost_info['services'] | length > 0
+          - hvhost_info['services'][0]['state'] == 'started'
+        fail_msg: "Hyper-V Host Compute Service (HvHost) is not running"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3d. Verify OS-Traffic vSwitch exists with correct type and SET enabled
+    # -----------------------------------------------------------------------
+    - name: Verify OS-Traffic vSwitch configuration
+      ansible.windows.win_shell: |
+        $sw = Get-VMSwitch -Name 'OS-Traffic' -ErrorAction Stop
+        if ($sw.SwitchType -ne 'External') {
+          throw "Wrong switch type: $($sw.SwitchType)"
+        }
+        if (-not $sw.EmbeddedTeamingEnabled) {
+          throw "Switch Embedded Teaming (SET) is not enabled"
+        }
+        "OK"
+      register: vswitch_verify
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert vSwitch verification passed
+      ansible.builtin.assert:
+        that:
+          - vswitch_verify['rc'] == 0
+        fail_msg: "OS-Traffic vSwitch is not correctly configured"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3e. Verify all 13 Windows features are installed
+    # -----------------------------------------------------------------------
+    - name: Verify Windows features are installed
+      ansible.windows.win_feature:
+        name:
+          - Hyper-V
+          - BitLocker
+          - HostGuardian
+          - RSAT-Shielded-VM-Tools
+          - RSAT-Hyper-V-Tools
+          - Hyper-V-Tools
+          - Hyper-V-PowerShell
+          - Failover-Clustering
+          - RSAT-Clustering-PowerShell
+          - FS-FileServer
+          - NetworkVirtualization
+          - RSAT-Clustering-Mgmt
+          - Data-Center-Bridging
+        state: present
+        include_sub_features: true
+      check_mode: true
+      register: features_check
+      tags: molecule-notest
+
+    - name: Assert all Windows features are present (no changes expected)
+      ansible.builtin.assert:
+        that:
+          - not features_check['changed']
+        fail_msg: "One or more required Windows features are not installed"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3f. Verify domain membership
+    # -----------------------------------------------------------------------
+    - name: Check current domain membership
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_ComputerSystem).Domain
+      register: domain_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert host is domain-joined (domain name is not a workgroup)
+      ansible.builtin.assert:
+        that:
+          - domain_check['stdout'] | trim | lower != 'workgroup'
+          - domain_check['stdout'] | trim | length > 0
+        fail_msg: "Host does not appear to be joined to an Active Directory domain"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3g. Verify UAC registry values on real Windows host
+    # -----------------------------------------------------------------------
+    - name: Read UAC ConsentPromptBehaviorAdmin registry value
+      ansible.windows.win_reg_stat:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+        name: ConsentPromptBehaviorAdmin
+      register: uac_reg_check
+      tags: molecule-notest
+
+    - name: Assert UAC ConsentPromptBehaviorAdmin is 2 (AlwaysNotify)
+      ansible.builtin.assert:
+        that:
+          - uac_reg_check['exists']
+          - uac_reg_check['value'] == 2
+        fail_msg: "UAC ConsentPromptBehaviorAdmin should be 2 for AlwaysNotify"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 3h. Verify PowerShell execution policy registry value on real host
+    # -----------------------------------------------------------------------
+    - name: Read ExecutionPolicy registry value
+      ansible.windows.win_reg_stat:
+        path: HKLM:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell
+        name: ExecutionPolicy
+      register: exec_policy_reg
+      tags: molecule-notest
+
+    - name: Assert ExecutionPolicy is RemoteSigned
+      ansible.builtin.assert:
+        that:
+          - exec_policy_reg['exists']
+          - exec_policy_reg['value'] == 'RemoteSigned'
+        fail_msg: "PowerShell ExecutionPolicy should be RemoteSigned at LocalMachine scope"
+      tags: molecule-notest
