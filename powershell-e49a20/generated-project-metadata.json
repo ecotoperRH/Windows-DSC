@@ -1,0 +1,50 @@
+[
+  {
+    "name": "ActiveDirectoryBuild",
+    "path": "ActiveDirectoryBuild.ps1",
+    "description": "Builds the first Domain Controller and establishes a new Active Directory forest from scratch, including AD DS/DNS/BitLocker/RSAT features, forest creation, strict password/lockout policies, replication sites, KDS Root Key, AD groups/OUs/users/gMSAs/CNOs, DNS zones, and three admin user accounts.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "ActiveDirectoryHub",
+    "path": "ActiveDirectoryHub.ps1",
+    "description": "Promotes an additional Domain Controller as a replica and joins it to an existing forest, applying base OS hardening, installing AD DS/DNS/BitLocker/RSAT features, and monitoring the NTDS service.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "AzureConnect",
+    "path": "AzureConnect.ps1",
+    "description": "Generic domain-join baseline for Azure-hosted Windows nodes, applying base OS hardening (UAC, timezone, execution policy), installing BitLocker, and joining the machine to Active Directory.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "MemberServer",
+    "path": "MemberServer.ps1",
+    "description": "Domain-join baseline for generic Windows member servers, applying base OS hardening, installing BitLocker, and joining the domain via xDSCDomainjoin.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "MemberServerSQL",
+    "path": "MemberServerSQL.ps1",
+    "description": "Provisions a SQL Server 2016 member server with a named instance, gMSA-based service accounts, custom TCP port configuration, and an inbound firewall rule for SQL connectivity.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "RedForestBuild",
+    "path": "RedForestBuild.ps1",
+    "description": "Configures the Host Guardian Service (HGS) Red Forest \u2014 an isolated AD forest for the Guarded Fabric \u2014 installing HGS roles, enforcing strict password/lockout policies, creating HGS-specific AD groups and replication sites, and configuring DNS forwarders.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "S2DHypervisorDell",
+    "path": "S2DHypervisorDell.ps1",
+    "description": "Configures a Dell server as a Storage Spaces Direct (S2D) Hyper-V cluster node, installing Hyper-V, Failover Clustering, Guarded Fabric, and related features, and creating an external virtual switch with dual-NIC SET teaming.",
+    "technology": "PowerShell"
+  },
+  {
+    "name": "StandAloneHypervisorDell",
+    "path": "StandAloneHypervisorDell.ps1",
+    "description": "Configures a Dell server as a standalone (non-clustered) Hyper-V host with the full Guarded Fabric feature set and an external virtual switch using a single NIC.",
+    "technology": "PowerShell"
+  }
+]
