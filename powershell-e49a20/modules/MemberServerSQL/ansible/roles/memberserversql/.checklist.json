@@ -1,0 +1,181 @@
+{
+  "module_name": "memberserversql",
+  "items": [
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/aap-configuration/controller_credential_types.yml",
+      "status": "complete",
+      "description": "AAP credential types configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/aap-configuration/controller_credentials.yml",
+      "status": "complete",
+      "description": "AAP credentials configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/tasks/validate_credentials.yml",
+      "status": "complete",
+      "description": "Credential validation tasks",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/meta/main.yml",
+      "status": "complete",
+      "description": "Role metadata file",
+      "notes": "Created standard meta/main.yml"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/handlers/main.yml",
+      "status": "complete",
+      "description": "Handlers: reboot handler (post domain join) and SQL service restart handler",
+      "notes": "Created handlers for domain join reboot, SQL Engine restart, and SQL Agent restart"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/vars/main.yml",
+      "status": "complete",
+      "description": "Role-level variables (sql_installer_source_path, sql_instance_name, sql_tcp_port, sql_collation, sql_features, etc.)",
+      "notes": "Created vars/main.yml with internal role variables for UAC registry paths, PS policy path, SQL service names, and INI destination"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/defaults/main.yml",
+      "status": "complete",
+      "description": "Role defaults \u2014 admin_path, api_folder_path, domain_name, sql_admin_group, sql_gmsa_account, sql_instance_name, sql_tcp_port, sql_collation, sql_features",
+      "notes": "Created defaults/main.yml with all user-facing role parameters and sensible defaults"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/meta/argument_specs.yml",
+      "status": "complete",
+      "description": "Role argument specs for fail-fast parameter validation (generate after defaults/main.yml)",
+      "notes": "Created argument_specs.yml documenting all role parameters including AAP credential variables"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/01_os_baseline.yml",
+      "status": "complete",
+      "description": "OS baseline: UAC (win_regedit), timezone (win_timezone), PowerShell execution policy (win_shell)",
+      "notes": "Converted UAC registry settings, timezone, and PowerShell execution policy from DSC to Ansible win_regedit and win_shell tasks"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/main.yml",
+      "status": "complete",
+      "description": "Main tasks entry point \u2014 orchestrates all task files in order",
+      "notes": "Created main.yml orchestrating all task files with validate_credentials as first include"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/02_folders.yml",
+      "status": "complete",
+      "description": "Create admin folder (win_file state=directory) and delete API folder (win_file state=absent)",
+      "notes": "Converted DSC File resources to ansible.windows.win_file tasks for create/remove directories"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/03_domain_join.yml",
+      "status": "complete",
+      "description": "AD domain join using ansible.windows.win_domain_membership; triggers reboot handler",
+      "notes": "Converted xDSCDomainjoin to ansible.windows.win_domain_membership with reboot handling and AAP credential variables"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/04_windows_features.yml",
+      "status": "complete",
+      "description": "Install Net-Framework-45-Core Windows feature with all sub-features (ansible.windows.win_feature)",
+      "notes": "Converted WindowsFeatureSet DSC resource to ansible.windows.win_feature with reboot handling"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/05_sql_install.yml",
+      "status": "complete",
+      "description": "SQL Server 2016 named instance SCVMMSQL silent install via ansible.windows.win_package with ConfigurationFile.ini; must run after domain join",
+      "notes": "Converted SqlSetup DSC resource to ansible.windows.win_package with silent install INI file and gMSA service accounts"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/06_sql_network.yml",
+      "status": "complete",
+      "description": "Configure SQL TCP protocol on port 50001 via win_shell/PowerShell SMO; restart MSSQL$SCVMMSQL and SQLAgent$SCVMMSQL services",
+      "notes": "Converted SqlServerNetwork DSC resource to PowerShell SMO via win_shell with service restart handlers"
+    },
+    {
+      "category": "recipes",
+      "source_path": "MemberServerSQL.ps1",
+      "target_path": "ansible/roles/memberserversql/tasks/07_firewall.yml",
+      "status": "complete",
+      "description": "Create inbound Windows Firewall rule AllowSQLConnection on TCP port 50001, Domain profile (ansible.windows.win_firewall_rule)",
+      "notes": "Converted NetworkingDsc Firewall DSC resource to win_shell with New-NetFirewallRule PowerShell cmdlet (idempotent)"
+    },
+    {
+      "category": "files",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/files/sql_install.ini",
+      "status": "complete",
+      "description": "SQL Server 2016 silent install configuration file (ConfigurationFile.ini) used by win_package for unattended install of named instance SCVMMSQL",
+      "notes": "Created SQL Server 2016 silent install INI configuration file with all required parameters"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/molecule/default/molecule.yml",
+      "status": "complete",
+      "description": "Molecule scenario configuration \u2014 delegated driver, local connection",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/molecule/default/verify.yml",
+      "status": "complete",
+      "description": "Verify playbook \u2014 checks /tmp/molecule_test/ paths for admin_path, api_folder_path absence, registry keys, SQL service stubs, firewall rule, domain membership",
+      "notes": "Generated verify.yml split into 2 plays (~15 tasks each): Play 1 checks directory/file existence with stat+assert loops (bracket notation, loop_var prefixed); Play 2 checks file contents with slurp+assert and runtime service/port checks tagged molecule-notest. All fail_msg strings are static (no variable interpolation). All loops use loop_control with prefixed loop_var."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/molecule/default/converge.yml",
+      "status": "complete",
+      "description": "Converge playbook \u2014 creates expected filesystem state under /tmp/molecule_test/ (UAC registry keys, SQL dirs, firewall rule stubs)",
+      "notes": "Generated container-safe converge.yml: creates /tmp/molecule_test/ directory tree mirroring Windows paths, writes UAC/PS-policy registry markers, SQL install INI, firewall rule marker, and SQL service markers. API registration directory is explicitly kept absent. No become, no include_role, no Windows-only modules."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/molecule/default/create.yml",
+      "status": "complete",
+      "description": "No-op instance create for delegated driver",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/memberserversql/molecule/default/destroy.yml",
+      "status": "complete",
+      "description": "No-op instance destroy for delegated driver",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+---
+- name: Install .NET Framework 4.5 and sub-features
+  ansible.windows.win_feature:
+    name: "{{ memberserversql_windows_features }}"
+    state: present
+    include_sub_features: true
+    include_management_tools: true
+  register: memberserversql_feature_result
+- name: Reboot if Windows feature installation requires it
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    msg: Rebooting after Windows feature installation
+  when: memberserversql_feature_result.reboot_required | default(false)

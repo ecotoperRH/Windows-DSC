@@ -1,0 +1,33 @@
+---
+- name: Copy SQL Server silent install configuration file to target
+  ansible.windows.win_copy:
+    src: sql_install.ini
+    dest: "{{ memberserversql_sql_ini_dest }}"
+    backup: true
+- name: Install SQL Server 2016 named instance SCVMMSQL
+  ansible.windows.win_package:
+    path: "{{ memberserversql_sql_installer_source_path }}\\setup.exe"
+    arguments:
+      - /ConfigurationFile={{ memberserversql_sql_ini_dest }}
+      - /SQLSVCACCOUNT={{ memberserversql_sql_gmsa_account }}
+      - /AGTSVCACCOUNT={{ memberserversql_sql_gmsa_account }}
+      - /SQLSYSADMINACCOUNTS={{ memberserversql_sql_admin_group }}
+      - /IAcceptSQLServerLicenseTerms
+    creates_service: MSSQL${{ memberserversql_sql_instance_name }}
+    state: present
+  register: memberserversql_sql_install_result
+- name: Reboot if SQL Server installation requires it
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+    msg: Rebooting after SQL Server installation
+  when: memberserversql_sql_install_result.reboot_required | default(false)
+- name: Ensure SQL Server Engine service is started
+  ansible.windows.win_service:
+    name: "{{ memberserversql_sql_engine_service }}"
+    state: started
+    start_mode: auto
+- name: Ensure SQL Server Agent service is started
+  ansible.windows.win_service:
+    name: "{{ memberserversql_sql_agent_service }}"
+    state: started
+    start_mode: auto

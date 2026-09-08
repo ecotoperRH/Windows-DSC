@@ -1,0 +1,16 @@
+---
+- name: Reboot after domain join
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    msg: Rebooting after domain join
+  listen: reboot_domain_join
+- name: Restart SQL Engine service
+  ansible.windows.win_service:
+    name: "{{ memberserversql_sql_engine_service }}"
+    state: restarted
+  listen: restart_sql_engine
+- name: Restart SQL Agent service
+  ansible.windows.win_service:
+    name: "{{ memberserversql_sql_agent_service }}"
+    state: restarted
+  listen: restart_sql_agent

@@ -1,0 +1,13 @@
+---
+- name: Join machine to Active Directory domain
+  ansible.windows.win_domain_membership:
+    dns_domain_name: "{{ memberserversql_domain_name }}"
+    domain_admin_user: "{{ domain_join_user }}"
+    domain_admin_password: "{{ domain_join_password }}"
+    state: domain
+  register: memberserversql_domain_join_result
+- name: Reboot immediately after domain join if required
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    msg: Rebooting after domain join
+  when: memberserversql_domain_join_result.reboot_required | default(false)

@@ -1,0 +1,57 @@
+---
+- name: Read current SQL Server TCP port via PowerShell SMO
+  ansible.windows.win_shell:
+    cmd: '$instanceName = "{{ memberserversql_sql_instance_name }}"
+
+      $smo = [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SqlWmiManagement")
+
+      $wmi = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer
+
+      $tcp = $wmi.ServerInstances[$instanceName].ServerProtocols["Tcp"]
+
+      $ipAll = $tcp.IPAddresses["IPAll"]
+
+      $currentPort = $ipAll.IPAddressProperties["TcpPort"].Value
+
+      Write-Output $currentPort
+
+      '
+  register: memberserversql_current_tcp_port
+  changed_when: false
+- name: Configure SQL Server TCP port using PowerShell SMO
+  ansible.windows.win_shell:
+    cmd: '$instanceName = "{{ memberserversql_sql_instance_name }}"
+
+      $tcpPort = {{ memberserversql_sql_tcp_port }}
+
+      $smo = [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SqlWmiManagement")
+
+      $wmi = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer
+
+      $tcp = $wmi.ServerInstances[$instanceName].ServerProtocols["Tcp"]
+
+      $tcp.IsEnabled = $true
+
+      $ipAll = $tcp.IPAddresses["IPAll"]
+
+      $ipAll.IPAddressProperties["TcpDynamicPorts"].Value = ""
+
+      $ipAll.IPAddressProperties["TcpPort"].Value = $tcpPort.ToString()
+
+      $tcp.Alter()
+
+      '
+  register: memberserversql_tcp_config_result
+  changed_when: true
+  when: memberserversql_current_tcp_port.stdout | trim != memberserversql_sql_tcp_port | string
+  notify:
+    - restart_sql_engine
+    - restart_sql_agent
+- name: Flush handlers to restart SQL services after TCP configuration
+  ansible.builtin.meta: flush_handlers
+- name: Verify SQL Server is listening on configured TCP port
+  ansible.windows.win_shell:
+    cmd: "$result = netstat -ano | Select-String \":{{ memberserversql_sql_tcp_port }}\"\nif (-not $result) {\n  Write-Error \"SQL Server is not listening on port
+      {{ memberserversql_sql_tcp_port }}\"\n  exit 1\n}\nWrite-Output \"SQL Server is listening on port {{ memberserversql_sql_tcp_port }}\"\n"
+  register: memberserversql_port_check
+  changed_when: false

@@ -1,0 +1,8 @@
+---
+memberserversql_uac_registry_path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+memberserversql_uac_consent_prompt_behavior_admin: 2
+memberserversql_uac_prompt_on_secure_desktop: 1
+memberserversql_ps_policy_registry_path: HKLM:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell
+memberserversql_sql_engine_service: MSSQL${{ memberserversql_sql_instance_name }}
+memberserversql_sql_agent_service: SQLAgent${{ memberserversql_sql_instance_name }}
+memberserversql_sql_ini_dest: C:\Admin\sql_install.ini

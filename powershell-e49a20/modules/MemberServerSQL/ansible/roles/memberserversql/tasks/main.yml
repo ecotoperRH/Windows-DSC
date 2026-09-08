@@ -1,0 +1,17 @@
+---
+- name: Validate credential variables
+  ansible.builtin.include_tasks: validate_credentials.yml
+- name: Apply OS baseline settings (UAC, timezone, execution policy)
+  ansible.builtin.include_tasks: 01_os_baseline.yml
+- name: Manage required directories
+  ansible.builtin.include_tasks: 02_folders.yml
+- name: Join machine to Active Directory domain
+  ansible.builtin.include_tasks: 03_domain_join.yml
+- name: Install required Windows features
+  ansible.builtin.include_tasks: 04_windows_features.yml
+- name: Install SQL Server 2016 named instance
+  ansible.builtin.include_tasks: 05_sql_install.yml
+- name: Configure SQL Server TCP network settings
+  ansible.builtin.include_tasks: 06_sql_network.yml
+- name: Configure Windows Firewall rule for SQL Server
+  ansible.builtin.include_tasks: 07_firewall.yml

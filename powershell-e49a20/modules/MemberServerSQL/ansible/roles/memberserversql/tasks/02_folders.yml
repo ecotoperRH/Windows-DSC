@@ -1,0 +1,9 @@
+---
+- name: Create admin directory
+  ansible.windows.win_file:
+    path: "{{ memberserversql_admin_path }}"
+    state: directory
+- name: Remove API registration directory
+  ansible.windows.win_file:
+    path: "{{ memberserversql_api_folder_path }}"
+    state: absent

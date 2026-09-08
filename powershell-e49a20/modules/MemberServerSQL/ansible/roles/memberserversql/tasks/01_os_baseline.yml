@@ -1,0 +1,32 @@
+---
+- name: Set UAC to AlwaysNotify - ConsentPromptBehaviorAdmin
+  ansible.windows.win_regedit:
+    path: "{{ memberserversql_uac_registry_path }}"
+    name: ConsentPromptBehaviorAdmin
+    data: "{{ memberserversql_uac_consent_prompt_behavior_admin }}"
+    type: dword
+    state: present
+- name: Set UAC to AlwaysNotify - PromptOnSecureDesktop
+  ansible.windows.win_regedit:
+    path: "{{ memberserversql_uac_registry_path }}"
+    name: PromptOnSecureDesktop
+    data: "{{ memberserversql_uac_prompt_on_secure_desktop }}"
+    type: dword
+    state: present
+- name: Get current timezone
+  ansible.windows.win_shell:
+    cmd: (Get-TimeZone).Id
+  register: memberserversql_current_timezone
+  changed_when: false
+- name: Set timezone to Pacific Standard Time
+  ansible.windows.win_shell:
+    cmd: Set-TimeZone -Id '{{ memberserversql_timezone }}'
+  when: memberserversql_current_timezone.stdout | trim != memberserversql_timezone
+  changed_when: true
+- name: Set PowerShell execution policy to RemoteSigned for LocalMachine
+  ansible.windows.win_regedit:
+    path: "{{ memberserversql_ps_policy_registry_path }}"
+    name: ExecutionPolicy
+    data: "{{ memberserversql_ps_execution_policy }}"
+    type: string
+    state: present

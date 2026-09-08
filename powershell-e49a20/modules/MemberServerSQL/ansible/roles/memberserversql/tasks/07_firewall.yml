@@ -1,0 +1,10 @@
+---
+- name: Create inbound firewall rule for SQL Server connection
+  ansible.windows.win_shell:
+    cmd: "$ruleName = \"{{ memberserversql_firewall_rule_name }}\"\n$existing = Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue\nif (-not $existing)
+      {\n  New-NetFirewallRule `\n    -Name $ruleName `\n    -DisplayName \"{{ memberserversql_firewall_rule_display_name }}\" `\n    -Description \"{{ memberserversql_firewall_rule_description
+      }}\" `\n    -Group \"{{ memberserversql_firewall_rule_group }}\" `\n    -Enabled True `\n    -Profile \"{{ memberserversql_firewall_rule_profile }}\" `\n  \
+      \  -Direction \"{{ memberserversql_firewall_rule_direction }}\" `\n    -LocalPort {{ memberserversql_sql_tcp_port }} `\n    -Protocol \"{{ memberserversql_firewall_rule_protocol
+      }}\"\n  Write-Output \"created\"\n} else {\n  Write-Output \"exists\"\n}\n"
+  register: memberserversql_fw_result
+  changed_when: "'created' in memberserversql_fw_result.stdout"

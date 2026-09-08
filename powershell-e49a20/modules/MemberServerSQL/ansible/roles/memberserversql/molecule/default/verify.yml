@@ -1,0 +1,205 @@
+---
+# verify.yml — validates the filesystem state created by converge.yml.
+# Split into two plays to stay under the ~15-task-per-play guideline.
+# Tasks that cannot run in a container (services, ports, firewall) are
+# tagged with `molecule-notest` so they are skipped during CI.
+
+# ==========================================================================
+# Play 1 — Directory and file existence checks
+# ==========================================================================
+- name: Verify — directories and files exist
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    # -----------------------------------------------------------------------
+    # 1a. Check that all expected directories were created
+    # -----------------------------------------------------------------------
+    - name: Stat expected directories
+      ansible.builtin.stat:
+        path: "{{ item_dir }}"
+      loop:
+        - /tmp/molecule_test/admin
+        - /tmp/molecule_test/sql/MSSQL13.MSSQLSERVER/MSSQL/Data
+        - /tmp/molecule_test/sql/MSSQL13.MSSQLSERVER/MSSQL/Backup
+        - /tmp/molecule_test/sql/shared
+        - /tmp/molecule_test/sql/shared_wow
+        - /tmp/molecule_test/registry
+        - /tmp/molecule_test/firewall
+        - /tmp/molecule_test/services
+      loop_control:
+        loop_var: item_dir
+      register: dir_stat_results
+
+    - name: Assert all expected directories exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['isdir']
+        fail_msg: "Expected directory was not created"
+      loop: "{{ dir_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    # -----------------------------------------------------------------------
+    # 1b. Check that the API registration directory is ABSENT
+    # -----------------------------------------------------------------------
+    - name: Stat API registration directory (must be absent)
+      ansible.builtin.stat:
+        path: /tmp/molecule_test/api_registration
+      register: api_dir_stat
+
+    - name: Assert API registration directory does not exist
+      ansible.builtin.assert:
+        that:
+          - not api_dir_stat['stat']['exists']
+        fail_msg: "API registration directory should have been removed but still exists"
+
+    # -----------------------------------------------------------------------
+    # 1c. Check that all expected config/marker files were created
+    # -----------------------------------------------------------------------
+    - name: Stat expected configuration and marker files
+      ansible.builtin.stat:
+        path: "{{ item_file }}"
+      loop:
+        - /tmp/molecule_test/registry/uac_settings.conf
+        - /tmp/molecule_test/registry/ps_execution_policy.conf
+        - /tmp/molecule_test/admin/sql_install.ini
+        - /tmp/molecule_test/firewall/AllowSQLConnection.conf
+        - /tmp/molecule_test/services/MSSQL_SCVMMSQL.conf
+        - /tmp/molecule_test/services/SQLAgent_SCVMMSQL.conf
+      loop_control:
+        loop_var: item_file
+      register: file_stat_results
+
+    - name: Assert all expected files exist and are non-empty
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "Expected file was not created or is empty"
+      loop: "{{ file_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+# ==========================================================================
+# Play 2 — File content checks and runtime checks (service/port/firewall)
+# ==========================================================================
+- name: Verify — file contents and runtime state
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    # -----------------------------------------------------------------------
+    # 2a. Verify UAC registry marker contains correct values
+    # -----------------------------------------------------------------------
+    - name: Slurp UAC registry marker file
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/registry/uac_settings.conf
+      register: uac_conf_slurp
+
+    - name: Assert UAC marker contains ConsentPromptBehaviorAdmin=2
+      ansible.builtin.assert:
+        that:
+          - "'ConsentPromptBehaviorAdmin=2' in (uac_conf_slurp['content'] | b64decode)"
+        fail_msg: "UAC ConsentPromptBehaviorAdmin value is missing or incorrect"
+
+    - name: Assert UAC marker contains PromptOnSecureDesktop=1
+      ansible.builtin.assert:
+        that:
+          - "'PromptOnSecureDesktop=1' in (uac_conf_slurp['content'] | b64decode)"
+        fail_msg: "UAC PromptOnSecureDesktop value is missing or incorrect"
+
+    # -----------------------------------------------------------------------
+    # 2b. Verify PowerShell execution policy marker
+    # -----------------------------------------------------------------------
+    - name: Slurp PowerShell execution policy marker file
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/registry/ps_execution_policy.conf
+      register: ps_policy_slurp
+
+    - name: Assert PS execution policy marker contains RemoteSigned
+      ansible.builtin.assert:
+        that:
+          - "'ExecutionPolicy=RemoteSigned' in (ps_policy_slurp['content'] | b64decode)"
+        fail_msg: "PowerShell ExecutionPolicy value is missing or incorrect"
+
+    # -----------------------------------------------------------------------
+    # 2c. Verify SQL install INI contains required instance and feature values
+    # -----------------------------------------------------------------------
+    - name: Slurp SQL install INI file
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/admin/sql_install.ini
+      register: sql_ini_slurp
+
+    - name: Assert SQL INI contains correct instance name
+      ansible.builtin.assert:
+        that:
+          - "'INSTANCENAME=\"SCVMMSQL\"' in (sql_ini_slurp['content'] | b64decode)"
+        fail_msg: "SQL INI is missing the SCVMMSQL instance name"
+
+    - name: Assert SQL INI contains SQLENGINE feature
+      ansible.builtin.assert:
+        that:
+          - "'FEATURES=SQLENGINE' in (sql_ini_slurp['content'] | b64decode)"
+        fail_msg: "SQL INI is missing the SQLENGINE feature declaration"
+
+    # -----------------------------------------------------------------------
+    # 2d. Verify firewall rule marker contains correct port and protocol
+    # -----------------------------------------------------------------------
+    - name: Slurp firewall rule marker file
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/firewall/AllowSQLConnection.conf
+      register: fw_rule_slurp
+
+    - name: Assert firewall marker contains correct rule name
+      ansible.builtin.assert:
+        that:
+          - "'Name=AllowSQLConnection' in (fw_rule_slurp['content'] | b64decode)"
+        fail_msg: "Firewall marker is missing the AllowSQLConnection rule name"
+
+    - name: Assert firewall marker contains TCP port 50001
+      ansible.builtin.assert:
+        that:
+          - "'LocalPort=50001' in (fw_rule_slurp['content'] | b64decode)"
+        fail_msg: "Firewall marker is missing TCP port 50001"
+
+    - name: Assert firewall marker targets Domain profile
+      ansible.builtin.assert:
+        that:
+          - "'Profile=Domain' in (fw_rule_slurp['content'] | b64decode)"
+        fail_msg: "Firewall marker is missing the Domain profile"
+
+    # -----------------------------------------------------------------------
+    # 2e. Service checks — cannot run in container; tagged molecule-notest
+    # -----------------------------------------------------------------------
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+      tags: molecule-notest
+
+    - name: Assert SQL Engine service is present and running
+      ansible.builtin.assert:
+        that:
+          - "'MSSQL$SCVMMSQL' in ansible_facts['services']"
+          - "ansible_facts['services']['MSSQL$SCVMMSQL']['state'] == 'running'"
+        fail_msg: "SQL Engine service MSSQL$SCVMMSQL is not running"
+      tags: molecule-notest
+
+    - name: Assert SQL Agent service is present and running
+      ansible.builtin.assert:
+        that:
+          - "'SQLAgent$SCVMMSQL' in ansible_facts['services']"
+          - "ansible_facts['services']['SQLAgent$SCVMMSQL']['state'] == 'running'"
+        fail_msg: "SQL Agent service SQLAgent$SCVMMSQL is not running"
+      tags: molecule-notest
+
+    # -----------------------------------------------------------------------
+    # 2f. TCP port check — cannot run in container; tagged molecule-notest
+    # -----------------------------------------------------------------------
+    - name: Wait for SQL Server TCP port 50001 to be listening
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 50001
+        timeout: 10
+        state: started
+      tags: molecule-notest
