@@ -1,0 +1,27 @@
+---
+- name: Validate credential variables
+  ansible.builtin.include_tasks: validate_credentials.yml
+- name: Apply base OS hardening settings
+  ansible.builtin.include_tasks: base_os_hardening.yml
+- name: Install Windows features for AD DS
+  ansible.builtin.include_tasks: install_features.yml
+- name: Build Active Directory forest and promote first DC
+  ansible.builtin.include_tasks: ad_forest.yml
+- name: Configure domain default password and lockout policy
+  ansible.builtin.include_tasks: ad_password_policy.yml
+- name: Create AD replication sites
+  ansible.builtin.include_tasks: ad_sites.yml
+- name: Create KDS Root Key for gMSA support
+  ansible.builtin.include_tasks: ad_kds_key.yml
+- name: Create AD security groups
+  ansible.builtin.include_tasks: ad_groups.yml
+- name: Create Group Managed Service Accounts
+  ansible.builtin.include_tasks: ad_gmsas.yml
+- name: Create Organizational Unit hierarchy
+  ansible.builtin.include_tasks: ad_ous.yml
+- name: Pre-stage Cluster Name Objects
+  ansible.builtin.include_tasks: ad_computers.yml
+- name: Configure DNS forwarders and zones
+  ansible.builtin.include_tasks: ad_dns.yml
+- name: Create AD user accounts
+  ansible.builtin.include_tasks: ad_users.yml

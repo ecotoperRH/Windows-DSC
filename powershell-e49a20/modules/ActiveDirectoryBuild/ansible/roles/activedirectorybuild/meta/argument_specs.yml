@@ -1,0 +1,291 @@
+---
+argument_specs:
+  main:
+    short_description: Build and configure a complete Active Directory forest from scratch
+    description:
+      - Installs AD DS, DNS, and related Windows features on the first Domain Controller.
+      - Promotes the server to a Domain Controller and builds the AD forest.
+      - Configures OS baseline settings including UAC, timezone, and PowerShell execution policy.
+      - Creates AD replication sites, KDS Root Key, security groups, gMSA accounts, OUs, CNOs, DNS zones, and user accounts.
+    options:
+      activedirectorybuild_domain_name:
+        type: str
+        required: false
+        default: corp.example.com
+        description: The FQDN of the Active Directory domain to create.
+      activedirectorybuild_base_dn:
+        type: str
+        required: false
+        default: DC=corp,DC=example,DC=com
+        description: The base Distinguished Name for the AD domain (e.g. DC=corp,DC=example,DC=com).
+      activedirectorybuild_admin_path:
+        type: str
+        required: false
+        default: C:\Admin
+        description: Path to the admin scripts folder to create on the target server.
+      activedirectorybuild_api_folder_path:
+        type: str
+        required: false
+        default: C:\APIRegistration
+        description: Path to the API registration folder to remove after provisioning.
+      activedirectorybuild_timezone:
+        type: str
+        required: false
+        default: Pacific Standard Time
+        description: Windows timezone ID to configure on the Domain Controller.
+      activedirectorybuild_ps_execution_policy:
+        type: str
+        required: false
+        default: RemoteSigned
+        description: PowerShell execution policy to set at LocalMachine scope.
+      activedirectorybuild_windows_features:
+        type: list
+        elements: str
+        required: false
+        default:
+          - AD-Domain-Services
+          - DNS
+          - RSAT-AD-PowerShell
+          - RSAT-ADDS
+          - RSAT-DNS-Server
+          - BitLocker
+          - RSAT-Feature-Tools-BitLocker-BdeAducExt
+        description: List of Windows features to install on the Domain Controller.
+      activedirectorybuild_password_history_count:
+        type: int
+        required: false
+        default: 24
+        description: Number of previous passwords remembered in the domain password policy.
+      activedirectorybuild_min_password_age:
+        type: int
+        required: false
+        default: 1440
+        description: Minimum password age in minutes (1440 = 1 day).
+      activedirectorybuild_max_password_age:
+        type: int
+        required: false
+        default: 525600
+        description: Maximum password age in minutes (525600 = 365 days).
+      activedirectorybuild_min_password_length:
+        type: int
+        required: false
+        default: 30
+        description: Minimum password length for the domain password policy.
+      activedirectorybuild_complexity_enabled:
+        type: bool
+        required: false
+        default: true
+        description: Whether password complexity requirements are enabled.
+      activedirectorybuild_reversible_encryption_enabled:
+        type: bool
+        required: false
+        default: false
+        description: Whether reversible encryption is enabled for passwords.
+      activedirectorybuild_lockout_duration:
+        type: int
+        required: false
+        default: 15
+        description: Account lockout duration in minutes.
+      activedirectorybuild_lockout_observation_window:
+        type: int
+        required: false
+        default: 15
+        description: Lockout observation window in minutes.
+      activedirectorybuild_lockout_threshold:
+        type: int
+        required: false
+        default: 50
+        description: Number of failed login attempts before account lockout.
+      activedirectorybuild_replication_sites:
+        type: list
+        elements: dict
+        required: false
+        default:
+          - name: cool-name-SE1
+            rename_default: true
+          - name: cool-name-LAS
+            rename_default: false
+          - name: cool-name-ORG
+            rename_default: false
+        description: List of AD replication sites to create.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name of the AD replication site.
+          rename_default:
+            type: bool
+            required: false
+            description: Whether to rename the Default-First-Site-Name to this site name.
+      activedirectorybuild_kds_effective_time:
+        type: str
+        required: false
+        default: 7/1/2019 09:00
+        description: Backdated effective time for the KDS Root Key. Must be at least 10 hours in the past for production use. AllowUnsafeEffectiveTime bypasses
+          this check.
+      activedirectorybuild_ad_groups:
+        type: list
+        elements: dict
+        required: false
+        description: List of AD security groups to create.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name of the AD group.
+          scope:
+            type: str
+            required: true
+            description: Group scope (universal, global, domainlocal).
+          category:
+            type: str
+            required: true
+            description: Group category (security, distribution).
+          description:
+            type: str
+            required: false
+            description: Description of the AD group.
+      activedirectorybuild_gmsas:
+        type: list
+        elements: dict
+        required: false
+        description: List of Group Managed Service Accounts to create.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name of the gMSA account.
+          description:
+            type: str
+            required: false
+            description: Description of the gMSA account.
+          principals_group:
+            type: str
+            required: true
+            description: AD group allowed to retrieve the managed password.
+      activedirectorybuild_ous:
+        type: list
+        elements: dict
+        required: false
+        description: List of Organizational Units to create in dependency order.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name of the OU.
+          path:
+            type: str
+            required: true
+            description: Distinguished Name path where the OU will be created.
+      activedirectorybuild_cnos:
+        type: list
+        elements: dict
+        required: false
+        description: List of Cluster Name Objects (CNOs) to pre-stage as disabled computer accounts.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name of the computer account (CNO).
+          description:
+            type: str
+            required: false
+            description: Description of the CNO.
+      activedirectorybuild_dns_conditional_forwarders:
+        type: list
+        elements: dict
+        required: false
+        description: List of DNS conditional forwarder zones to configure.
+        options:
+          name:
+            type: str
+            required: true
+            description: DNS zone name for the conditional forwarder.
+          master_servers:
+            type: list
+            elements: str
+            required: true
+            description: List of master DNS server IP addresses.
+          replication_scope:
+            type: str
+            required: false
+            description: AD replication scope (Forest, Domain, Legacy).
+      activedirectorybuild_dns_forwarders:
+        type: list
+        elements: str
+        required: false
+        description: List of default DNS forwarder IP addresses.
+      activedirectorybuild_dns_ad_zones:
+        type: list
+        elements: dict
+        required: false
+        description: List of AD-integrated DNS zones to create.
+        options:
+          name:
+            type: str
+            required: true
+            description: DNS zone name.
+          dynamic_update:
+            type: str
+            required: false
+            description: Dynamic update setting (Secure, NonsecureAndSecure, None).
+          replication_scope:
+            type: str
+            required: false
+            description: AD replication scope (Forest, Domain, Legacy).
+      activedirectorybuild_admin_users:
+        type: list
+        elements: dict
+        required: false
+        description: List of administrative user accounts to create.
+        options:
+          username:
+            type: str
+            required: true
+            description: sAMAccountName of the user.
+          upn:
+            type: str
+            required: false
+            description: User Principal Name (UPN) for the account.
+          description:
+            type: str
+            required: false
+            description: Description of the user account.
+          display_name:
+            type: str
+            required: false
+            description: Display name of the user.
+          company:
+            type: str
+            required: false
+            description: Company name for the user account.
+          path:
+            type: str
+            required: false
+            description: OU path where the user account will be created.
+          password_never_expires:
+            type: bool
+            required: false
+            description: Whether the password never expires.
+          cannot_change_password:
+            type: bool
+            required: false
+            description: Whether the user cannot change their password.
+      activedirectorybuild_default_dc_password:
+        type: str
+        required: true
+        description: DC admin and SafeMode password. Injected at runtime by AAP credential type (maps to DEFAULT_DC_CRED from Azure Automation).
+      activedirectorybuild_dc_join_password:
+        type: str
+        required: true
+        description: Domain Controller join credential password. Injected at runtime by AAP credential type (maps to DOMAIN_CONTROLLER_JOIN from Azure
+          Automation).
+      activedirectorybuild_domain_join_password:
+        type: str
+        required: true
+        description: Domain join service account password. Injected at runtime by AAP credential type (maps to DOMAIN_JOIN from Azure Automation).
+      activedirectorybuild_temp_password:
+        type: str
+        required: true
+        description: Temporary password for new administrative user accounts. Injected at runtime by AAP credential type (maps to TEMP_PASSWORD from Azure
+          Automation).

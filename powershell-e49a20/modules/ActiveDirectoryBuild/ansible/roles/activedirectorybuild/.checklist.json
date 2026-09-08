@@ -1,0 +1,221 @@
+{
+  "module_name": "activedirectorybuild",
+  "items": [
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/aap-configuration/controller_credential_types.yml",
+      "status": "complete",
+      "description": "AAP credential types configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/aap-configuration/controller_credentials.yml",
+      "status": "complete",
+      "description": "AAP credentials configuration",
+      "notes": ""
+    },
+    {
+      "category": "credentials",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/validate_credentials.yml",
+      "status": "complete",
+      "description": "Credential validation tasks",
+      "notes": ""
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/meta/main.yml",
+      "status": "complete",
+      "description": "Role metadata file",
+      "notes": "Created standard meta/main.yml"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/meta/argument_specs.yml",
+      "status": "complete",
+      "description": "Role argument specs for fail-fast parameter validation (generate after defaults/main.yml)",
+      "notes": "Full argument specs for all role variables including credential variables injected by AAP"
+    },
+    {
+      "category": "structure",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/handlers/main.yml",
+      "status": "complete",
+      "description": "Role handlers file",
+      "notes": "Handlers for reboot after domain promotion and feature install"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/defaults/main.yml",
+      "status": "complete",
+      "description": "Role default variables \u2014 domain name, admin path, API folder path, base DN, and all credential variable stubs",
+      "notes": "Converted all DSC variables and configuration to Ansible defaults"
+    },
+    {
+      "category": "structure",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/vars/vault.yml",
+      "status": "complete",
+      "description": "Ansible Vault-encrypted variable file for all secrets: DEFAULT_DC_CRED, DOMAIN_CONTROLLER_JOIN, DOMAIN_JOIN, TEMP_PASSWORD",
+      "notes": "Credential variables mapped from Azure Automation to AAP credential type injected variables"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/main.yml",
+      "status": "complete",
+      "description": "Main tasks entry point \u2014 orchestrates all sub-task includes in dependency order",
+      "notes": "Main orchestration file including validate_credentials first, then all sub-task files in order"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/base_os_hardening.yml",
+      "status": "complete",
+      "description": "Base OS hardening tasks: UAC (win_regedit), timezone (community.windows.win_timezone), PS execution policy (win_shell), admin folder (win_file), API folder removal (win_file)",
+      "notes": "UAC registry keys, timezone, PS execution policy, admin folder, API folder removal"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/install_features.yml",
+      "status": "complete",
+      "description": "Install Windows features: AD-Domain-Services, DNS, RSAT-AD-PowerShell, RSAT-ADDS, RSAT-DNS-Server, BitLocker, RSAT-Feature-Tools-BitLocker-BdeAducExt using ansible.windows.win_feature with include_sub_features: true",
+      "notes": "Installs all AD DS, DNS, RSAT, BitLocker features as a list with sub-features"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_forest.yml",
+      "status": "complete",
+      "description": "Promote first DC and build AD forest using microsoft.ad.domain; triggers reboot. Ensure NTDS service is Running/Automatic via ansible.windows.win_service",
+      "notes": "Promotes first DC, builds forest, ensures NTDS and ADWS services are running"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_password_policy.yml",
+      "status": "complete",
+      "description": "Configure domain default password and lockout policy: PasswordHistoryCount=24, MinPasswordLength=30, ComplexityEnabled, LockoutThreshold=50, etc. via microsoft.ad.domain_password_policy or win_shell",
+      "notes": "Sets domain password and lockout policy via Set-ADDefaultDomainPasswordPolicy"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_sites.yml",
+      "status": "complete",
+      "description": "Create AD replication sites: cool-name-SE1 (rename default), cool-name-LAS, cool-name-ORG using win_shell with New-ADReplicationSite / Rename-ADObject",
+      "notes": "Creates/renames AD replication sites: cool-name-SE1 (renamed from default), cool-name-LAS, cool-name-ORG"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_kds_key.yml",
+      "status": "complete",
+      "description": "Create KDS Root Key for gMSA support using win_shell: Add-KdsRootKey -EffectiveTime with AllowUnsafeEffectiveTime",
+      "notes": "Creates KDS Root Key with backdated effective time using Add-KdsRootKey -Force"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_groups.yml",
+      "status": "complete",
+      "description": "Create all AD security groups (Universal/Security): Admin-Tier-Zero, Admin-Tier-One, Admin-Tier-Two, PAW-Users, Admin-DHCP-Manage, Admin-Domain-Join, Admin-SQL-Group, Admin-gmsa-SQL-Group, Cluster-Tier-One, Cluster-Tier-Zero, Admin-gmsa-SCVMM-Group using microsoft.ad.group",
+      "notes": "Creates all 11 AD security groups (Universal/Security scope) using microsoft.ad.group"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_gmsas.yml",
+      "status": "complete",
+      "description": "Create Group Managed Service Accounts: gmsaSVC-SQL and gmsaSVC-SCVMM using win_shell with New-ADServiceAccount and -PrincipalsAllowedToRetrieveManagedPassword",
+      "notes": "Creates gmsaSVC-SQL and gmsaSVC-SCVMM gMSA accounts using microsoft.ad.service_account"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_ous.yml",
+      "status": "complete",
+      "description": "Create OU hierarchy: Resources, PM, DHCP (under PM), Critical Systems/Guarded Fabric/Applications/Managed Devices (under Resources) using microsoft.ad.ou in dependency order",
+      "notes": "Creates full OU hierarchy in dependency order using microsoft.ad.ou"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_computers.yml",
+      "status": "complete",
+      "description": "Pre-stage disabled Cluster Name Objects (CNOs): COREADMIN, CORESQL, CORESQLDR, COREPRIMARY, CORESECONDARY, CORESOFS using microsoft.ad.computer with enabled: false",
+      "notes": "Pre-stages 6 CNOs (COREADMIN, CORESQL, CORESQLDR, COREPRIMARY, CORESECONDARY, CORESOFS) as disabled computer accounts"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_dns.yml",
+      "status": "complete",
+      "description": "Configure DNS: conditional forwarders (Cool Name, cool-name.net), default forwarders (10.78.62.176, 10.78.130.26), AD-integrated reverse zone 10.in-addr.arpa using win_shell with DNS PowerShell cmdlets",
+      "notes": "Configures DNS conditional forwarders, default forwarders, and AD-integrated reverse zone"
+    },
+    {
+      "category": "recipes",
+      "source_path": "ActiveDirectoryBuild.ps1",
+      "target_path": "ansible/roles/activedirectorybuild/tasks/ad_users.yml",
+      "status": "complete",
+      "description": "Create AD user accounts: AD-Domain-Join, DC-Domain-Join (default Users container), AdminOne/AdminTwo/AdminThree (Managed Devices OU) using microsoft.ad.user with password_never_expires and cannot_change_password",
+      "notes": "Creates AD-Domain-Join, DC-Domain-Join service accounts and AdminOne/Two/Three admin users"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/molecule.yml",
+      "status": "complete",
+      "description": "Molecule scenario configuration \u2014 delegated driver, local connection for AAP testing",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/converge.yml",
+      "status": "complete",
+      "description": "Molecule converge playbook \u2014 creates expected filesystem state under /tmp/molecule_test/ (admin_path directory present, api_folder_path absent)",
+      "notes": "Creates /tmp/molecule_test/ directory tree with marker files representing: admin folder, OS baseline (UAC/timezone/PS policy), AD replication sites, 11 AD security groups, 2 gMSAs, 7 OUs, 6 CNOs, DNS config, and 5 AD user accounts. No become, no Windows modules, all paths under /tmp/molecule_test/."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/verify.yml",
+      "status": "complete",
+      "description": "Molecule verify playbook \u2014 checks /tmp/molecule_test/ paths: UAC registry keys, NTDS service state, AD objects (domain, groups, OUs, CNOs, users, DNS zones)",
+      "notes": "Split into 4 plays: (1) base OS/filesystem markers, (2) AD groups/gMSAs/OUs, (3) CNOs/DNS/users, (4) Windows-only AD DS/service checks tagged molecule-notest. Uses stat+assert+slurp pattern throughout. All loops use prefixed loop_vars and bracket notation."
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/create.yml",
+      "status": "complete",
+      "description": "Molecule no-op instance create playbook for delegated driver",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "molecule",
+      "source_path": "N/A",
+      "target_path": "ansible/roles/activedirectorybuild/molecule/default/destroy.yml",
+      "status": "complete",
+      "description": "Molecule no-op instance destroy playbook for delegated driver",
+      "notes": "Created by MoleculeAgent (deterministic scaffold)"
+    },
+    {
+      "category": "dependencies",
+      "source_path": "collection:ansible.windows",
+      "target_path": "ansible/roles/activedirectorybuild/requirements.yml",
+      "status": "complete",
+      "description": "ansible.windows collection \u2014 win_feature, win_service, win_file, win_regedit, win_shell used throughout all tasks",
+      "notes": "Requirements for ansible.windows and microsoft.ad collections"
+    }
+  ]
+}

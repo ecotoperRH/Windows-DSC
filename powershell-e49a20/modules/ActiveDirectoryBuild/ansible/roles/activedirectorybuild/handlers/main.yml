@@ -1,0 +1,11 @@
+---
+- name: Reboot after domain promotion
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+    post_reboot_delay: 60
+    msg: Rebooting after Active Directory domain promotion
+- name: Reboot after feature install
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+    post_reboot_delay: 30
+    msg: Rebooting after Windows feature installation

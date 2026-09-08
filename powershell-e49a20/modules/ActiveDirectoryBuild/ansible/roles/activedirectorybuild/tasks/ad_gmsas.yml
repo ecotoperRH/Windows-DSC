@@ -1,0 +1,14 @@
+---
+- name: Create group managed service accounts (gMSA)
+  microsoft.ad.service_account:
+    name: "{{ item_gmsa['name'] }}"
+    description: "{{ item_gmsa['description'] }}"
+    dns_hostname: "{{ item_gmsa['name'] }}.{{ activedirectorybuild_domain_name }}"
+    allowed_to_retrieve_password:
+      set:
+        - "{{ item_gmsa['principals_group'] }}"
+    state: present
+  loop: "{{ activedirectorybuild_gmsas }}"
+  loop_control:
+    loop_var: item_gmsa
+    label: "{{ item_gmsa['name'] }}"

@@ -1,0 +1,28 @@
+---
+- name: Add DNS conditional forwarder for Cool Name
+  ansible.windows.win_shell: '$zone = Get-DnsServerZone -Name "Cool Name" -ErrorAction SilentlyContinue if (-not $zone) { Add-DnsServerConditionalForwarderZone `
+    -Name "Cool Name" ` -MasterServers "10.78.20.219","10.78.20.220" ` -ReplicationScope "Forest" Write-Output "CHANGED" } else {   Write-Output "OK" } '
+  register: activedirectorybuild_dns_cf_coolname
+  changed_when: "'CHANGED' in activedirectorybuild_dns_cf_coolname.stdout"
+- name: Add DNS conditional forwarder for cool-name.net
+  ansible.windows.win_shell: '$zone = Get-DnsServerZone -Name "cool-name.net" -ErrorAction SilentlyContinue if (-not $zone) { Add-DnsServerConditionalForwarderZone
+    ` -Name "cool-name.net" ` -MasterServers "10.78.0.11","10.78.0.12","10.78.8.11" ` -ReplicationScope "Forest" Write-Output "CHANGED"
+
+    } else { Write-Output "OK" } '
+  register: activedirectorybuild_dns_cf_coolnamenet
+  changed_when: "'CHANGED' in activedirectorybuild_dns_cf_coolnamenet.stdout"
+- name: Get current DNS default forwarders
+  ansible.windows.win_shell: "$fwds = (Get-DnsServerForwarder).IPAddress.IPAddressToString | Sort-Object\n$fwds -join ','\n"
+  register: activedirectorybuild_current_dns_forwarders
+  changed_when: false
+- name: Set DNS default forwarders
+  ansible.windows.win_shell: Set-DnsServerForwarder -IPAddress "10.78.62.176","10.78.130.26" -UseRootHint $false
+  changed_when: true
+  when: "'10.78.62.176' not in activedirectorybuild_current_dns_forwarders.stdout or '10.78.130.26' not in activedirectorybuild_current_dns_forwarders.stdout\n"
+- name: Add AD-integrated reverse lookup zone 10.in-addr.arpa
+  ansible.windows.win_shell: '$zone = Get-DnsServerZone -Name "10.in-addr.arpa" -ErrorAction SilentlyContinue if (-not $zone) { Add-DnsServerPrimaryZone `     -Name
+    "10.in-addr.arpa" ` -ReplicationScope "Forest" ` -DynamicUpdate "Secure" Write-Output "CHANGED" } else { Write-Output "OK"
+
+    } '
+  register: activedirectorybuild_dns_arpa_zone
+  changed_when: "'CHANGED' in activedirectorybuild_dns_arpa_zone.stdout"

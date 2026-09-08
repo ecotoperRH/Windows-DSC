@@ -1,0 +1,26 @@
+---
+- name: Promote first Domain Controller and create AD forest
+  microsoft.ad.domain:
+    dns_domain_name: "{{ activedirectorybuild_domain_name }}"
+    safe_mode_password: "{{ activedirectorybuild_default_dc_password }}"
+    install_dns: true
+    reboot: true
+  register: activedirectorybuild_domain_result
+- name: Wait for Active Directory Web Services to become available
+  ansible.windows.win_service:
+    name: ADWS
+    state: started
+    start_mode: auto
+  retries: 12
+  delay: 15
+  register: activedirectorybuild_adws_result
+  until: activedirectorybuild_adws_result is not failed
+- name: Ensure NTDS service is running and set to Automatic startup
+  ansible.windows.win_service:
+    name: NTDS
+    state: started
+    start_mode: auto
+  retries: 12
+  delay: 15
+  register: activedirectorybuild_ntds_result
+  until: activedirectorybuild_ntds_result is not failed

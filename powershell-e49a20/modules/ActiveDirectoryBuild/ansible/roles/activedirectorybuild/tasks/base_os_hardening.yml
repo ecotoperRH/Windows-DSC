@@ -1,0 +1,46 @@
+---
+- name: Set UAC to AlwaysNotify - ConsentPromptBehaviorAdmin
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: ConsentPromptBehaviorAdmin
+    data: 2
+    type: dword
+    state: present
+- name: Set UAC to AlwaysNotify - PromptOnSecureDesktop
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: PromptOnSecureDesktop
+    data: 1
+    type: dword
+    state: present
+- name: Set UAC to AlwaysNotify - EnableLUA
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: EnableLUA
+    data: 1
+    type: dword
+    state: present
+- name: Get current timezone
+  ansible.windows.win_shell: (Get-TimeZone).Id
+  register: activedirectorybuild_current_timezone
+  changed_when: false
+- name: Set timezone to Pacific Standard Time
+  ansible.windows.win_shell: Set-TimeZone -Id "{{ activedirectorybuild_timezone }}" -Confirm:$false
+  changed_when: true
+  when: activedirectorybuild_current_timezone.stdout | trim != activedirectorybuild_timezone
+- name: Get current PowerShell execution policy
+  ansible.windows.win_shell: (Get-ExecutionPolicy -Scope LocalMachine).ToString()
+  register: activedirectorybuild_current_exec_policy
+  changed_when: false
+- name: Set PowerShell execution policy to RemoteSigned
+  ansible.windows.win_shell: "Set-ExecutionPolicy -ExecutionPolicy {{ activedirectorybuild_ps_execution_policy }} -Scope LocalMachine -Force "
+  changed_when: true
+  when: activedirectorybuild_current_exec_policy.stdout | trim != activedirectorybuild_ps_execution_policy
+- name: Create admin folder
+  ansible.windows.win_file:
+    path: "{{ activedirectorybuild_admin_path }}"
+    state: directory
+- name: Remove API registration folder
+  ansible.windows.win_file:
+    path: "{{ activedirectorybuild_api_folder_path }}"
+    state: absent

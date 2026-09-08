@@ -1,0 +1,21 @@
+---
+- name: Rename Default-First-Site-Name to primary datacenter site
+  ansible.windows.win_shell: "$defaultSite = Get-ADReplicationSite -Filter { Name -eq 'Default-First-Site-Name' } -ErrorAction SilentlyContinue\nif ($defaultSite)
+    {\n  Rename-ADObject -Identity $defaultSite.DistinguishedName -NewName 'cool-name-SE1'\n  Write-Output \"CHANGED\"\n} else {\n  Write-Output \"OK\"\n}\n"
+  register: activedirectorybuild_rename_site
+  changed_when: "'CHANGED' in activedirectorybuild_rename_site.stdout"
+- name: Create AD replication site cool-name-SE1 if not already renamed
+  ansible.windows.win_shell: "$site = Get-ADReplicationSite -Filter { Name -eq 'cool-name-SE1' } -ErrorAction SilentlyContinue\nif (-not $site) {\n  New-ADReplicationSite
+    -Name 'cool-name-SE1'\n  Write-Output \"CHANGED\"\n} else {\n  Write-Output \"OK\"\n}\n"
+  register: activedirectorybuild_site_se1
+  changed_when: "'CHANGED' in activedirectorybuild_site_se1.stdout"
+- name: Create AD replication site cool-name-LAS
+  ansible.windows.win_shell: "$site = Get-ADReplicationSite -Filter { Name -eq 'cool-name-LAS' } -ErrorAction SilentlyContinue\nif (-not $site) {\n  New-ADReplicationSite
+    -Name 'cool-name-LAS'\n  Write-Output \"CHANGED\"\n} else {\n  Write-Output \"OK\"\n}\n"
+  register: activedirectorybuild_site_las
+  changed_when: "'CHANGED' in activedirectorybuild_site_las.stdout"
+- name: Create AD replication site cool-name-ORG
+  ansible.windows.win_shell: "$site = Get-ADReplicationSite -Filter { Name -eq 'cool-name-ORG' } -ErrorAction SilentlyContinue\nif (-not $site) {\n  New-ADReplicationSite
+    -Name 'cool-name-ORG'\n  Write-Output \"CHANGED\"\n} else {\n  Write-Output \"OK\"\n}\n"
+  register: activedirectorybuild_site_org
+  changed_when: "'CHANGED' in activedirectorybuild_site_org.stdout"

@@ -1,0 +1,9 @@
+---
+activedirectorybuild_default_dc_username: "{{ username }}"
+activedirectorybuild_default_dc_password: "{{ password }}"
+activedirectorybuild_dc_join_username: "{{ username }}"
+activedirectorybuild_dc_join_password: "{{ password }}"
+activedirectorybuild_domain_join_username: "{{ username }}"
+activedirectorybuild_domain_join_password: "{{ password }}"
+activedirectorybuild_temp_username: "{{ username }}"
+activedirectorybuild_temp_password: "{{ password }}"

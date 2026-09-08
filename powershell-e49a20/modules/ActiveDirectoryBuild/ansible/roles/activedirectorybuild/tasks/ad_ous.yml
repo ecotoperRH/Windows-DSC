@@ -1,0 +1,36 @@
+---
+- name: Create root-level Resources OU
+  microsoft.ad.ou:
+    name: Resources
+    path: "{{ activedirectorybuild_base_dn }}"
+    state: present
+- name: Create root-level PM OU
+  microsoft.ad.ou:
+    name: PM
+    path: "{{ activedirectorybuild_base_dn }}"
+    state: present
+- name: Create DHCP OU under PM
+  microsoft.ad.ou:
+    name: DHCP
+    path: OU=PM,{{ activedirectorybuild_base_dn }}
+    state: present
+- name: Create Critical Systems (TIER 0) OU under Resources
+  microsoft.ad.ou:
+    name: Critical Systems (TIER 0)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+    state: present
+- name: Create Guarded Fabric (TIER 1) OU under Resources
+  microsoft.ad.ou:
+    name: Guarded Fabric (TIER 1)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+    state: present
+- name: Create Applications (TIER 1) OU under Resources
+  microsoft.ad.ou:
+    name: Applications (TIER 1)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+    state: present
+- name: Create Managed Devices (TIER 2) OU under Resources
+  microsoft.ad.ou:
+    name: Managed Devices (TIER 2)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+    state: present

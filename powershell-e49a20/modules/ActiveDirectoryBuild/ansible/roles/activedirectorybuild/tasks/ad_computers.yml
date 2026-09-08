@@ -1,0 +1,11 @@
+---
+- name: Pre-stage cluster name objects as disabled computer accounts
+  microsoft.ad.computer:
+    name: "{{ item_cno['name'] }}"
+    description: "{{ item_cno['description'] }}"
+    enabled: false
+    state: present
+  loop: "{{ activedirectorybuild_cnos }}"
+  loop_control:
+    loop_var: item_cno
+    label: "{{ item_cno['name'] }}"

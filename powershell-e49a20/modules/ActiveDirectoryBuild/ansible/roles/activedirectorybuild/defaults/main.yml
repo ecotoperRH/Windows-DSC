@@ -1,0 +1,156 @@
+---
+activedirectorybuild_domain_name: corp.example.com
+activedirectorybuild_base_dn: DC=corp,DC=example,DC=com
+activedirectorybuild_admin_path: C:\Admin
+activedirectorybuild_api_folder_path: C:\APIRegistration
+activedirectorybuild_timezone: Pacific Standard Time
+activedirectorybuild_ps_execution_policy: RemoteSigned
+activedirectorybuild_windows_features:
+  - AD-Domain-Services
+  - DNS
+  - RSAT-AD-PowerShell
+  - RSAT-ADDS
+  - RSAT-DNS-Server
+  - BitLocker
+  - RSAT-Feature-Tools-BitLocker-BdeAducExt
+activedirectorybuild_password_history_count: 24
+activedirectorybuild_min_password_age: 1440
+activedirectorybuild_max_password_age: 525600
+activedirectorybuild_min_password_length: 30
+activedirectorybuild_complexity_enabled: true
+activedirectorybuild_reversible_encryption_enabled: false
+activedirectorybuild_lockout_duration: 15
+activedirectorybuild_lockout_observation_window: 15
+activedirectorybuild_lockout_threshold: 50
+activedirectorybuild_replication_sites:
+  - name: cool-name-SE1
+    rename_default: true
+  - name: cool-name-LAS
+    rename_default: false
+  - name: cool-name-ORG
+    rename_default: false
+activedirectorybuild_kds_effective_time: 7/1/2019 09:00
+activedirectorybuild_ad_groups:
+  - name: Admin-Tier-Zero
+    scope: universal
+    category: security
+    description: Tier Zero Admin Group
+  - name: Admin-Tier-One
+    scope: universal
+    category: security
+    description: Tier One Admin Group
+  - name: Admin-Tier-Two
+    scope: universal
+    category: security
+    description: Tier Two Admin Group
+  - name: PAW-Users
+    scope: universal
+    category: security
+    description: PAW Users Group
+  - name: Admin-DHCP-Manage
+    scope: universal
+    category: security
+    description: DHCP Admin Management Group
+  - name: Admin-Domain-Join
+    scope: universal
+    category: security
+    description: Cool Name Domain Join Delegation Group
+  - name: Admin-SQL-Group
+    scope: universal
+    category: security
+    description: Cool Name SQL Server Administrative Group
+  - name: Admin-gmsa-SQL-Group
+    scope: universal
+    category: security
+    description: Cool Name SQL Server gMSA Delegation Group
+  - name: Cluster-Tier-One
+    scope: universal
+    category: security
+    description: Cool Name CNO Delegation Group
+  - name: Cluster-Tier-Zero
+    scope: universal
+    category: security
+    description: Cool Name CNO Delegation Group
+  - name: Admin-gmsa-SCVMM-Group
+    scope: universal
+    category: security
+    description: Cool Name SCVMM Server gMSA Delegation Group
+activedirectorybuild_gmsas:
+  - name: gmsaSVC-SQL
+    description: Cool Name SQL Server gMSA Account
+    principals_group: Admin-gmsa-SQL-Group
+  - name: gmsaSVC-SCVMM
+    description: Cool Name SCVMM Server gMSA Account
+    principals_group: Admin-gmsa-SCVMM-Group
+activedirectorybuild_ous:
+  - name: Resources
+    path: "{{ activedirectorybuild_base_dn }}"
+  - name: PM
+    path: "{{ activedirectorybuild_base_dn }}"
+  - name: DHCP
+    path: OU=PM,{{ activedirectorybuild_base_dn }}
+  - name: Critical Systems (TIER 0)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+  - name: Guarded Fabric (TIER 1)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+  - name: Applications (TIER 1)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+  - name: Managed Devices (TIER 2)
+    path: OU=Resources,{{ activedirectorybuild_base_dn }}
+activedirectorybuild_cnos:
+  - name: COREADMIN
+    description: Cluster Name Object for S2D Admin Cluster
+  - name: CORESQL
+    description: Cluster Name Object for S2D SQL Cluster
+  - name: CORESQLDR
+    description: Cluster Name Object for S2D SQL DR Cluster
+  - name: COREPRIMARY
+    description: Cluster Name Object for S2D Primary Cluster
+  - name: CORESECONDARY
+    description: Cluster Name Object for S2D Secondary Cluster
+  - name: CORESOFS
+    description: Cluster Name Object for Scale Out File Server Cluster
+activedirectorybuild_dns_conditional_forwarders:
+  - name: Cool Name
+    master_servers:
+      - 10.78.20.219
+      - 10.78.20.220
+    replication_scope: Forest
+  - name: cool-name.net
+    master_servers:
+      - 10.78.0.11
+      - 10.78.0.12
+      - 10.78.8.11
+    replication_scope: Forest
+activedirectorybuild_dns_forwarders:
+  - 10.78.62.176
+  - 10.78.130.26
+activedirectorybuild_dns_ad_zones:
+  - name: 10.in-addr.arpa
+    dynamic_update: Secure
+    replication_scope: Forest
+activedirectorybuild_admin_users:
+  - username: AdminOne
+    upn: AdminOne@cool-name.net
+    description: AdminOne
+    display_name: AdminOne
+    company: Cool Name Inc
+    path: OU=Managed Devices (TIER 2),OU=Resources,{{ activedirectorybuild_base_dn }}
+    password_never_expires: true
+    cannot_change_password: true
+  - username: AdminTwo
+    upn: AdminTwo@cool-name.net
+    description: AdminTwo
+    display_name: AdminTwo
+    company: Cool Name Inc
+    path: OU=Managed Devices (TIER 2),OU=Resources,{{ activedirectorybuild_base_dn }}
+    password_never_expires: true
+    cannot_change_password: true
+  - username: AdminThree
+    upn: AdminThree@cool-name.net
+    description: AdminThree
+    display_name: AdminThree
+    company: Cool Name Inc
+    path: OU=Managed Devices (TIER 2),OU=Resources,{{ activedirectorybuild_base_dn }}
+    password_never_expires: true
+    cannot_change_password: true

@@ -1,0 +1,12 @@
+---
+- name: Check if KDS Root Key already exists
+  ansible.windows.win_shell: "$key = Get-KdsRootKey -ErrorAction SilentlyContinue\nif ($key) {\n  Write-Output \"EXISTS\"\n} else {\n  Write-Output \"MISSING\"\n\
+    }\n"
+  register: activedirectorybuild_kds_check
+  changed_when: false
+- name: Create KDS Root Key with backdated effective time for gMSA support
+  ansible.windows.win_shell: 'Add-KdsRootKey -EffectiveTime "{{ activedirectorybuild_kds_effective_time }}" -Force
+
+    '
+  when: "'MISSING' in activedirectorybuild_kds_check.stdout"
+  changed_when: true

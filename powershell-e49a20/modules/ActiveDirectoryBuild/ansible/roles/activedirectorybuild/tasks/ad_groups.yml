@@ -1,0 +1,12 @@
+---
+- name: Create AD security groups
+  microsoft.ad.group:
+    name: "{{ item_adgroup['name'] }}"
+    scope: "{{ item_adgroup['scope'] }}"
+    category: "{{ item_adgroup['category'] }}"
+    description: "{{ item_adgroup['description'] }}"
+    state: present
+  loop: "{{ activedirectorybuild_ad_groups }}"
+  loop_control:
+    loop_var: item_adgroup
+    label: "{{ item_adgroup['name'] }}"

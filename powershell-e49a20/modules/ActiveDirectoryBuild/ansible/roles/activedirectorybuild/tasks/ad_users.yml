@@ -1,0 +1,34 @@
+---
+- name: Create AD-Domain-Join service account
+  microsoft.ad.user:
+    name: AD-Domain-Join
+    password: "{{ activedirectorybuild_domain_join_password }}"
+    description: Domain Join Account
+    password_never_expires: true
+    update_password: on_create
+    state: present
+- name: Create DC-Domain-Join service account
+  microsoft.ad.user:
+    name: DC-Domain-Join
+    password: "{{ activedirectorybuild_dc_join_password }}"
+    description: Domain Controller Join Account
+    password_never_expires: true
+    update_password: on_create
+    state: present
+- name: Create administrative user accounts
+  microsoft.ad.user:
+    name: "{{ item_aduser['username'] }}"
+    upn: "{{ item_aduser['upn'] }}"
+    password: "{{ activedirectorybuild_temp_password }}"
+    description: "{{ item_aduser['description'] }}"
+    display_name: "{{ item_aduser['display_name'] }}"
+    company: "{{ item_aduser['company'] }}"
+    path: "{{ item_aduser['path'] }}"
+    password_never_expires: "{{ item_aduser['password_never_expires'] }}"
+    user_cannot_change_password: "{{ item_aduser['cannot_change_password'] }}"
+    update_password: on_create
+    state: present
+  loop: "{{ activedirectorybuild_admin_users }}"
+  loop_control:
+    loop_var: item_aduser
+    label: "{{ item_aduser['username'] }}"

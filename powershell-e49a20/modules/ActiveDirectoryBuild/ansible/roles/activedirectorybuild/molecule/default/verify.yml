@@ -1,0 +1,426 @@
+---
+# verify.yml — validates the filesystem state created by converge.yml and
+# marks Windows-only checks (AD DS, DNS, registry, services) with
+# `tags: molecule-notest` so they are skipped in the EE container.
+#
+# Split into four plays to keep each under ~15 tasks:
+#   Play 1 — Base OS / filesystem markers
+#   Play 2 — AD groups, gMSAs, OUs
+#   Play 3 — CNOs, DNS, AD users
+#   Play 4 — Windows-only checks (molecule-notest)
+
+# ===========================================================================
+# Play 1 — Base OS and filesystem markers
+# ===========================================================================
+- name: Verify base OS hardening and filesystem markers
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    - name: Stat admin folder marker
+      ansible.builtin.stat:
+        path: /tmp/molecule_test/admin/.marker
+      register: admin_marker_stat
+
+    - name: Assert admin folder marker exists and is non-empty
+      ansible.builtin.assert:
+        that:
+          - admin_marker_stat['stat']['exists']
+          - admin_marker_stat['stat']['size'] > 0
+        fail_msg: "Admin folder marker not found — admin_path directory was not created"
+
+    - name: Stat API registration folder (must be absent)
+      ansible.builtin.stat:
+        path: /tmp/molecule_test/api_registration
+      register: api_folder_stat
+
+    - name: Assert API registration folder is absent
+      ansible.builtin.assert:
+        that:
+          - not api_folder_stat['stat']['exists']
+        fail_msg: "API registration folder still exists — it should have been removed"
+
+    - name: Stat OS baseline config marker
+      ansible.builtin.stat:
+        path: /tmp/molecule_test/config/os_baseline.conf
+      register: os_baseline_stat
+
+    - name: Assert OS baseline config marker exists
+      ansible.builtin.assert:
+        that:
+          - os_baseline_stat['stat']['exists']
+          - os_baseline_stat['stat']['size'] > 0
+        fail_msg: "OS baseline config marker not found"
+
+    - name: Slurp OS baseline config marker
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/config/os_baseline.conf
+      register: os_baseline_content
+
+    - name: Assert OS baseline config contains expected UAC and policy values
+      ansible.builtin.assert:
+        that:
+          - "'ConsentPromptBehaviorAdmin=2' in (os_baseline_content['content'] | b64decode)"
+          - "'PromptOnSecureDesktop=1' in (os_baseline_content['content'] | b64decode)"
+          - "'EnableLUA=1' in (os_baseline_content['content'] | b64decode)"
+          - "'Pacific Standard Time' in (os_baseline_content['content'] | b64decode)"
+          - "'RemoteSigned' in (os_baseline_content['content'] | b64decode)"
+        fail_msg: "OS baseline config marker is missing expected UAC or policy values"
+
+    - name: Stat AD replication sites config marker
+      ansible.builtin.stat:
+        path: /tmp/molecule_test/config/sites/replication_sites.conf
+      register: sites_conf_stat
+
+    - name: Assert AD replication sites config marker exists
+      ansible.builtin.assert:
+        that:
+          - sites_conf_stat['stat']['exists']
+          - sites_conf_stat['stat']['size'] > 0
+        fail_msg: "AD replication sites config marker not found"
+
+    - name: Slurp AD replication sites config marker
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/config/sites/replication_sites.conf
+      register: sites_conf_content
+
+    - name: Assert all three replication sites are listed
+      ansible.builtin.assert:
+        that:
+          - "'cool-name-SE1' in (sites_conf_content['content'] | b64decode)"
+          - "'cool-name-LAS' in (sites_conf_content['content'] | b64decode)"
+          - "'cool-name-ORG' in (sites_conf_content['content'] | b64decode)"
+        fail_msg: "One or more expected AD replication sites are missing from the config marker"
+
+# ===========================================================================
+# Play 2 — AD groups, gMSAs, and OU hierarchy markers
+# ===========================================================================
+- name: Verify AD groups, gMSAs, and OU config markers
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    - name: Stat AD security group config markers
+      ansible.builtin.stat:
+        path: "/tmp/molecule_test/config/ad_groups/{{ item_adgroup }}.conf"
+      loop:
+        - Admin-Tier-Zero
+        - Admin-Tier-One
+        - Admin-Tier-Two
+        - PAW-Users
+        - Admin-DHCP-Manage
+        - Admin-Domain-Join
+        - Admin-SQL-Group
+        - Admin-gmsa-SQL-Group
+        - Cluster-Tier-One
+        - Cluster-Tier-Zero
+        - Admin-gmsa-SCVMM-Group
+      loop_control:
+        loop_var: item_adgroup
+      register: adgroup_stat_results
+
+    - name: Assert all AD security group config markers exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "AD group config marker not found"
+      loop: "{{ adgroup_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    - name: Stat gMSA config markers
+      ansible.builtin.stat:
+        path: "/tmp/molecule_test/config/gmsas/{{ item_gmsa }}.conf"
+      loop:
+        - gmsaSVC-SQL
+        - gmsaSVC-SCVMM
+      loop_control:
+        loop_var: item_gmsa
+      register: gmsa_stat_results
+
+    - name: Assert gMSA config markers exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "gMSA config marker not found"
+      loop: "{{ gmsa_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    - name: Slurp gMSA config markers
+      ansible.builtin.slurp:
+        src: "/tmp/molecule_test/config/gmsas/{{ item_gmsa }}.conf"
+      loop:
+        - gmsaSVC-SQL
+        - gmsaSVC-SCVMM
+      loop_control:
+        loop_var: item_gmsa
+      register: gmsa_content_results
+
+    - name: Assert gMSA config markers reference correct principals groups
+      ansible.builtin.assert:
+        that:
+          - "'GroupManagedServiceAccount' in (item_result['content'] | b64decode)"
+        fail_msg: "gMSA config marker does not contain expected account type"
+      loop: "{{ gmsa_content_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    - name: Stat OU hierarchy config markers
+      ansible.builtin.stat:
+        path: "/tmp/molecule_test/config/ad_ous/{{ item_ou }}.conf"
+      loop:
+        - Resources
+        - PM
+        - DHCP
+        - Critical_Systems_TIER_0
+        - Guarded_Fabric_TIER_1
+        - Applications_TIER_1
+        - Managed_Devices_TIER_2
+      loop_control:
+        loop_var: item_ou
+      register: ou_stat_results
+
+    - name: Assert all OU config markers exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "OU config marker not found"
+      loop: "{{ ou_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+# ===========================================================================
+# Play 3 — CNOs, DNS, and AD user markers
+# ===========================================================================
+- name: Verify CNO, DNS, and AD user config markers
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    - name: Stat CNO config markers
+      ansible.builtin.stat:
+        path: "/tmp/molecule_test/config/ad_computers/{{ item_cno }}.conf"
+      loop:
+        - COREADMIN
+        - CORESQL
+        - CORESQLDR
+        - COREPRIMARY
+        - CORESECONDARY
+        - CORESOFS
+      loop_control:
+        loop_var: item_cno
+      register: cno_stat_results
+
+    - name: Assert all CNO config markers exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "CNO config marker not found"
+      loop: "{{ cno_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    - name: Slurp a CNO config marker to verify disabled flag
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/config/ad_computers/COREADMIN.conf
+      register: cno_sample_content
+
+    - name: Assert CNO config marker shows enabled=false
+      ansible.builtin.assert:
+        that:
+          - "'enabled=false' in (cno_sample_content['content'] | b64decode)"
+        fail_msg: "CNO config marker does not indicate disabled computer account"
+
+    - name: Stat DNS configuration marker
+      ansible.builtin.stat:
+        path: /tmp/molecule_test/config/dns/dns_config.conf
+      register: dns_conf_stat
+
+    - name: Assert DNS configuration marker exists
+      ansible.builtin.assert:
+        that:
+          - dns_conf_stat['stat']['exists']
+          - dns_conf_stat['stat']['size'] > 0
+        fail_msg: "DNS configuration marker not found"
+
+    - name: Slurp DNS configuration marker
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/config/dns/dns_config.conf
+      register: dns_conf_content
+
+    - name: Assert DNS config marker contains expected forwarders and zones
+      ansible.builtin.assert:
+        that:
+          - "'Cool Name' in (dns_conf_content['content'] | b64decode)"
+          - "'cool-name.net' in (dns_conf_content['content'] | b64decode)"
+          - "'10.78.62.176' in (dns_conf_content['content'] | b64decode)"
+          - "'10.78.130.26' in (dns_conf_content['content'] | b64decode)"
+          - "'10.in-addr.arpa' in (dns_conf_content['content'] | b64decode)"
+        fail_msg: "DNS config marker is missing expected forwarder or zone entries"
+
+    - name: Stat AD user config markers
+      ansible.builtin.stat:
+        path: "/tmp/molecule_test/config/ad_users/{{ item_aduser }}.conf"
+      loop:
+        - AD-Domain-Join
+        - DC-Domain-Join
+        - AdminOne
+        - AdminTwo
+        - AdminThree
+      loop_control:
+        loop_var: item_aduser
+      register: aduser_stat_results
+
+    - name: Assert all AD user config markers exist
+      ansible.builtin.assert:
+        that:
+          - item_result['stat']['exists']
+          - item_result['stat']['size'] > 0
+        fail_msg: "AD user config marker not found"
+      loop: "{{ aduser_stat_results['results'] }}"
+      loop_control:
+        loop_var: item_result
+
+    - name: Slurp an admin user config marker to verify policy flags
+      ansible.builtin.slurp:
+        src: /tmp/molecule_test/config/ad_users/AdminOne.conf
+      register: adminuser_sample_content
+
+    - name: Assert admin user config marker contains expected policy flags
+      ansible.builtin.assert:
+        that:
+          - "'password_never_expires=true' in (adminuser_sample_content['content'] | b64decode)"
+          - "'cannot_change_password=true' in (adminuser_sample_content['content'] | b64decode)"
+          - "'Cool Name Inc' in (adminuser_sample_content['content'] | b64decode)"
+        fail_msg: "Admin user config marker is missing expected password policy or company flags"
+
+# ===========================================================================
+# Play 4 — Windows-only checks (skipped in EE container)
+# ===========================================================================
+- name: Verify Windows AD DS services and objects (molecule-notest)
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+      tags: molecule-notest
+
+    - name: Assert NTDS service is running and set to automatic
+      ansible.builtin.assert:
+        that:
+          - "'NTDS' in ansible_facts['services']"
+          - "ansible_facts['services']['NTDS']['state'] == 'running'"
+          - "ansible_facts['services']['NTDS']['status'] == 'enabled'"
+        fail_msg: "NTDS service is not running or not set to automatic startup"
+      tags: molecule-notest
+
+    - name: Assert DNS service is running
+      ansible.builtin.assert:
+        that:
+          - "'DNS Server' in ansible_facts['services'] or 'dns' in ansible_facts['services']"
+        fail_msg: "DNS service is not running"
+      tags: molecule-notest
+
+    - name: Assert ADWS service is running
+      ansible.builtin.assert:
+        that:
+          - "'ADWS' in ansible_facts['services']"
+          - "ansible_facts['services']['ADWS']['state'] == 'running'"
+        fail_msg: "Active Directory Web Services (ADWS) is not running"
+      tags: molecule-notest
+
+    - name: Check AD domain is accessible
+      ansible.windows.win_shell: |
+        $domain = Get-ADDomain -ErrorAction SilentlyContinue
+        if ($domain) { Write-Output "OK" } else { Write-Output "FAIL" }
+      register: ad_domain_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert AD domain is accessible
+      ansible.builtin.assert:
+        that:
+          - "'OK' in ad_domain_check['stdout']"
+        fail_msg: "AD domain is not accessible via Get-ADDomain"
+      tags: molecule-notest
+
+    - name: Check AD default domain password policy
+      ansible.windows.win_shell: |
+        $policy = Get-ADDefaultDomainPasswordPolicy -ErrorAction SilentlyContinue
+        if ($policy -and $policy.MinPasswordLength -ge 30) {
+          Write-Output "OK"
+        } else {
+          Write-Output "FAIL"
+        }
+      register: ad_password_policy_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert AD password policy meets minimum requirements
+      ansible.builtin.assert:
+        that:
+          - "'OK' in ad_password_policy_check['stdout']"
+        fail_msg: "AD default domain password policy does not meet minimum requirements"
+      tags: molecule-notest
+
+    - name: Check AD replication sites exist
+      ansible.windows.win_shell: |
+        $sites = Get-ADReplicationSite -Filter * | Select-Object -ExpandProperty Name
+        $required = @('cool-name-SE1','cool-name-LAS','cool-name-ORG')
+        $missing = $required | Where-Object { $_ -notin $sites }
+        if ($missing.Count -eq 0) { Write-Output "OK" } else { Write-Output "FAIL: $($missing -join ',')" }
+      register: ad_sites_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert all required AD replication sites exist
+      ansible.builtin.assert:
+        that:
+          - "'OK' in ad_sites_check['stdout']"
+        fail_msg: "One or more required AD replication sites are missing"
+      tags: molecule-notest
+
+    - name: Check required AD security groups exist
+      ansible.windows.win_shell: |
+        $required = @(
+          'Admin-Tier-Zero','Admin-Tier-One','Admin-Tier-Two','PAW-Users',
+          'Admin-DHCP-Manage','Admin-Domain-Join','Admin-SQL-Group',
+          'Admin-gmsa-SQL-Group','Cluster-Tier-One','Cluster-Tier-Zero',
+          'Admin-gmsa-SCVMM-Group'
+        )
+        $missing = $required | Where-Object {
+          -not (Get-ADGroup -Filter "Name -eq '$_'" -ErrorAction SilentlyContinue)
+        }
+        if ($missing.Count -eq 0) { Write-Output "OK" } else { Write-Output "FAIL" }
+      register: ad_groups_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert all required AD security groups exist
+      ansible.builtin.assert:
+        that:
+          - "'OK' in ad_groups_check['stdout']"
+        fail_msg: "One or more required AD security groups are missing"
+      tags: molecule-notest
+
+    - name: Check DNS forwarders and zones are configured
+      ansible.windows.win_shell: |
+        $fwds = Get-DnsServerForwarder -ErrorAction SilentlyContinue
+        $arpa = Get-DnsServerZone -Name '10.in-addr.arpa' -ErrorAction SilentlyContinue
+        if ($fwds -and $arpa) { Write-Output "OK" } else { Write-Output "FAIL" }
+      register: dns_check
+      changed_when: false
+      tags: molecule-notest
+
+    - name: Assert DNS forwarders and reverse zone are configured
+      ansible.builtin.assert:
+        that:
+          - "'OK' in dns_check['stdout']"
+        fail_msg: "DNS forwarders or reverse lookup zone 10.in-addr.arpa is not configured"
+      tags: molecule-notest

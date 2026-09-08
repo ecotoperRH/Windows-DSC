@@ -1,0 +1,189 @@
+- name: Converge
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Create base molecule test directory tree
+    ansible.builtin.file:
+      path: '{{ item_dir }}'
+      state: directory
+      mode: '0755'
+    loop:
+    - /tmp/molecule_test
+    - /tmp/molecule_test/admin
+    - /tmp/molecule_test/config
+    - /tmp/molecule_test/config/ad_groups
+    - /tmp/molecule_test/config/ad_ous
+    - /tmp/molecule_test/config/ad_computers
+    - /tmp/molecule_test/config/ad_users
+    - /tmp/molecule_test/config/dns
+    - /tmp/molecule_test/config/sites
+    - /tmp/molecule_test/config/gmsas
+    loop_control:
+      loop_var: item_dir
+  - name: Create admin folder marker (represents activedirectorybuild_admin_path)
+    ansible.builtin.copy:
+      content: '# Marker: admin folder created by activedirectorybuild role
+
+        # Represents: C:\Admin (activedirectorybuild_admin_path)
+
+        '
+      dest: /tmp/molecule_test/admin/.marker
+      mode: '0644'
+  - name: Ensure API registration folder is absent
+    ansible.builtin.file:
+      path: /tmp/molecule_test/api_registration
+      state: absent
+  - name: Create UAC baseline config marker
+    ansible.builtin.copy:
+      content: 'ConsentPromptBehaviorAdmin=2
+
+        PromptOnSecureDesktop=1
+
+        EnableLUA=1
+
+        Timezone=Pacific Standard Time
+
+        PSExecutionPolicy=RemoteSigned
+
+        '
+      dest: /tmp/molecule_test/config/os_baseline.conf
+      mode: '0644'
+  - name: Create AD replication sites config marker
+    ansible.builtin.copy:
+      content: '# AD Replication Sites
+
+        cool-name-SE1
+
+        cool-name-LAS
+
+        cool-name-ORG
+
+        '
+      dest: /tmp/molecule_test/config/sites/replication_sites.conf
+      mode: '0644'
+  - name: Create AD security group config markers
+    ansible.builtin.copy:
+      content: 'scope=universal category=security description={{ item_adgroup[''description''] }} '
+      dest: /tmp/molecule_test/config/ad_groups/{{ item_adgroup['name'] }}.conf
+      mode: '0644'
+    loop:
+    - name: Admin-Tier-Zero
+      description: Tier Zero Admin Group
+    - name: Admin-Tier-One
+      description: Tier One Admin Group
+    - name: Admin-Tier-Two
+      description: Tier Two Admin Group
+    - name: PAW-Users
+      description: PAW Users Group
+    - name: Admin-DHCP-Manage
+      description: DHCP Admin Management Group
+    - name: Admin-Domain-Join
+      description: Cool Name Domain Join Delegation Group
+    - name: Admin-SQL-Group
+      description: Cool Name SQL Server Administrative Group
+    - name: Admin-gmsa-SQL-Group
+      description: Cool Name SQL Server gMSA Delegation Group
+    - name: Cluster-Tier-One
+      description: Cool Name CNO Delegation Group
+    - name: Cluster-Tier-Zero
+      description: Cool Name CNO Delegation Group
+    - name: Admin-gmsa-SCVMM-Group
+      description: Cool Name SCVMM Server gMSA Delegation Group
+    loop_control:
+      loop_var: item_adgroup
+  - name: Create gMSA config markers
+    ansible.builtin.copy:
+      content: 'type=GroupManagedServiceAccount principals_group={{ item_gmsa[''principals_group''] }} '
+      dest: /tmp/molecule_test/config/gmsas/{{ item_gmsa['name'] }}.conf
+      mode: '0644'
+    loop:
+    - name: gmsaSVC-SQL
+      principals_group: Admin-gmsa-SQL-Group
+    - name: gmsaSVC-SCVMM
+      principals_group: Admin-gmsa-SCVMM-Group
+    loop_control:
+      loop_var: item_gmsa
+  - name: Create OU hierarchy config markers
+    ansible.builtin.copy:
+      content: 'state=present path={{ item_ou[''path''] }} '
+      dest: /tmp/molecule_test/config/ad_ous/{{ item_ou['name'] | replace(' ', '_') | replace('(', '') | replace(')', '') }}.conf
+      mode: '0644'
+    loop:
+    - name: Resources
+      path: DC=corp,DC=example,DC=com
+    - name: PM
+      path: DC=corp,DC=example,DC=com
+    - name: DHCP
+      path: OU=PM,DC=corp,DC=example,DC=com
+    - name: Critical Systems (TIER 0)
+      path: OU=Resources,DC=corp,DC=example,DC=com
+    - name: Guarded Fabric (TIER 1)
+      path: OU=Resources,DC=corp,DC=example,DC=com
+    - name: Applications (TIER 1)
+      path: OU=Resources,DC=corp,DC=example,DC=com
+    - name: Managed Devices (TIER 2)
+      path: OU=Resources,DC=corp,DC=example,DC=com
+    loop_control:
+      loop_var: item_ou
+  - name: Create CNO config markers
+    ansible.builtin.copy:
+      content: 'enabled=false state=present description={{ item_cno[''description''] }} '
+      dest: /tmp/molecule_test/config/ad_computers/{{ item_cno['name'] }}.conf
+      mode: '0644'
+    loop:
+    - name: COREADMIN
+      description: Cluster Name Object for S2D Admin Cluster
+    - name: CORESQL
+      description: Cluster Name Object for S2D SQL Cluster
+    - name: CORESQLDR
+      description: Cluster Name Object for S2D SQL DR Cluster
+    - name: COREPRIMARY
+      description: Cluster Name Object for S2D Primary Cluster
+    - name: CORESECONDARY
+      description: Cluster Name Object for S2D Secondary Cluster
+    - name: CORESOFS
+      description: Cluster Name Object for Scale Out File Server Cluster
+    loop_control:
+      loop_var: item_cno
+  - name: Create DNS configuration marker
+    ansible.builtin.copy:
+      content: '# DNS Conditional Forwarders
+
+        Cool Name -> 10.78.20.219,10.78.20.220 (Forest)
+
+        cool-name.net -> 10.78.0.11,10.78.0.12,10.78.8.11 (Forest)
+
+        # Default Forwarders
+
+        10.78.62.176
+
+        10.78.130.26
+
+        # AD-Integrated Zones
+
+        10.in-addr.arpa (Secure, Forest)
+
+        '
+      dest: /tmp/molecule_test/config/dns/dns_config.conf
+      mode: '0644'
+  - name: Create service account user config markers
+    ansible.builtin.copy:
+      content: 'password_never_expires=true cannot_change_password=true state=present '
+      dest: /tmp/molecule_test/config/ad_users/{{ item_svcuser }}.conf
+      mode: '0644'
+    loop:
+    - AD-Domain-Join
+    - DC-Domain-Join
+    loop_control:
+      loop_var: item_svcuser
+  - name: Create admin user config markers
+    ansible.builtin.copy:
+      content: 'password_never_expires=true cannot_change_password=true company=Cool Name Inc state=present '
+      dest: /tmp/molecule_test/config/ad_users/{{ item_adminuser }}.conf
+      mode: '0644'
+    loop:
+    - AdminOne
+    - AdminTwo
+    - AdminThree
+    loop_control:
+      loop_var: item_adminuser
